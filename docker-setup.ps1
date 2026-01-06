@@ -42,22 +42,25 @@ docker-compose up -d
 
 # Wait for MySQL to be ready
 Write-Host "⏳ Waiting for MySQL to be ready..." -ForegroundColor Yellow
-Start-Sleep -Seconds 10
+Start-Sleep -Seconds 15
+
+# Generate application key
+Write-Host "🔑 Generating application key..." -ForegroundColor Yellow
+docker-compose exec -T php php artisan key:generate --force
 
 # Run migrations
 Write-Host "🗄️  Running database migrations..." -ForegroundColor Yellow
-docker-compose exec php php artisan migrate --force
+docker-compose exec -T php php artisan migrate --force
 
 # Seed database if needed
 Write-Host "🌱 Seeding database..." -ForegroundColor Yellow
-docker-compose exec php php artisan db:seed --force
+docker-compose exec -T php php artisan db:seed --force
 
-# Clear caches
-Write-Host "🧹 Clearing caches..." -ForegroundColor Yellow
-docker-compose exec php php artisan cache:clear
-docker-compose exec php php artisan config:clear
-docker-compose exec php php artisan route:clear
-docker-compose exec php php artisan view:clear
+# Clear and cache config
+Write-Host "🧹 Clearing and caching configuration..." -ForegroundColor Yellow
+docker-compose exec -T php php artisan config:cache
+docker-compose exec -T php php artisan route:cache
+docker-compose exec -T php php artisan view:cache
 
 Write-Host ""
 Write-Host "✅ Setup complete!" -ForegroundColor Green

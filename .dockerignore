@@ -1,0 +1,50 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Tests
+tests
+phpunit.xml
+.phpunit.result.cache
+
+# Documentation
+*.md
+!README.md
+DOCKER.md
+
+# Development files
+.env.example
+.editorconfig
+.styleci.yml
+
+# Docker files (no need to copy into container)
+docker-compose.yml
+Dockerfile
+.dockerignore
+docker/
+
+# Build artifacts
+storage/logs/*
+!storage/logs/.gitignore
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+
+# Vendor (will be installed via composer)
+# vendor
+
+# Other
+.DS_Store
+Thumbs.db

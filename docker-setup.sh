@@ -42,22 +42,25 @@ docker-compose up -d
 
 # Wait for MySQL to be ready
 echo "⏳ Waiting for MySQL to be ready..."
-sleep 10
+sleep 15
+
+# Generate application key
+echo "🔑 Generating application key..."
+docker-compose exec -T php php artisan key:generate --force
 
 # Run migrations
 echo "🗄️  Running database migrations..."
-docker-compose exec php php artisan migrate --force
+docker-compose exec -T php php artisan migrate --force
 
 # Seed database if needed
 echo "🌱 Seeding database..."
-docker-compose exec php php artisan db:seed --force
+docker-compose exec -T php php artisan db:seed --force
 
-# Clear caches
-echo "🧹 Clearing caches..."
-docker-compose exec php php artisan cache:clear
-docker-compose exec php php artisan config:clear
-docker-compose exec php php artisan route:clear
-docker-compose exec php php artisan view:clear
+# Clear and cache config
+echo "🧹 Clearing and caching configuration..."
+docker-compose exec -T php php artisan config:cache
+docker-compose exec -T php php artisan route:cache
+docker-compose exec -T php php artisan view:cache
 
 echo ""
 echo "✅ Setup complete!"
