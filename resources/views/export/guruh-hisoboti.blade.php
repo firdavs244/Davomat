@@ -6,33 +6,37 @@
 @section('content')
 <div class="space-y-6">
     <!-- Header -->
-    <div class="bg-white rounded-xl shadow-sm p-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between">
-            <div>
-                <h2 class="text-xl font-bold text-gray-800">{{ $guruh->nomi }}</h2>
-                <p class="text-gray-500">{{ $guruh->yunalish }} | {{ $guruh->kurs }}-kurs</p>
+    <div class="bg-card rounded-xl border border-border p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                    <i data-lucide="bar-chart-3" class="w-7 h-7 text-white"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-bold text-foreground">{{ $guruh->nomi }}</h2>
+                    <p class="text-muted-foreground">{{ $guruh->yunalish }} | {{ $guruh->kurs }}-kurs</p>
+                </div>
             </div>
-            <div class="mt-4 md:mt-0 flex flex-col sm:flex-row gap-2">
-                <form action="{{ route('export.guruh', $guruh) }}" method="GET" class="flex space-x-2">
-                    <select name="oy" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+            <div class="flex flex-col sm:flex-row gap-2">
+                <form action="{{ route('export.guruh', $guruh) }}" method="GET" class="flex flex-wrap gap-2">
+                    <select name="oy" class="input w-auto">
                         @for($i = 1; $i <= 12; $i++)
                         <option value="{{ $i }}" {{ $oy == $i ? 'selected' : '' }}>{{ $i }}-oy</option>
                         @endfor
                     </select>
-                    <select name="yil" class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    <select name="yil" class="input w-auto">
                         @for($y = now()->year; $y >= now()->year - 3; $y--)
                         <option value="{{ $y }}" {{ $yil == $y ? 'selected' : '' }}>{{ $y }}</option>
                         @endfor
                     </select>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button type="submit" class="btn btn-primary gap-2">
+                        <i data-lucide="eye" class="w-4 h-4"></i>
                         Ko'rsatish
                     </button>
                 </form>
                 <a href="{{ route('export.guruh', ['guruh' => $guruh, 'oy' => $oy, 'yil' => $yil, 'export' => 1]) }}"
-                   class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-center">
-                    <svg class="w-5 h-5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
+                   class="btn btn-success gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
                     Excel yuklash
                 </a>
             </div>
@@ -40,53 +44,95 @@
     </div>
 
     <!-- Statistika Table -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
-            <h3 class="text-lg font-semibold text-gray-800">{{ $yil }}-yil {{ $oy }}-oy davomati</h3>
-            <p class="text-sm text-gray-600 mt-1">Talabalar davomat statistikasi va foizlar</p>
+    <div class="bg-card rounded-xl border border-border overflow-hidden">
+        <div class="px-6 py-4 border-b border-border bg-gradient-to-r from-primary/10 to-secondary/10">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-foreground flex items-center gap-2">
+                        <i data-lucide="calendar-range" class="w-5 h-5 text-primary"></i>
+                        {{ $yil }}-yil {{ $oy }}-oy davomati
+                    </h3>
+                    <p class="text-sm text-muted-foreground mt-1">Talabalar davomat statistikasi va foizlar</p>
+                </div>
+                <div class="hidden sm:flex items-center gap-4 text-sm">
+                    <span class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-full bg-success"></span>
+                        <span class="text-muted-foreground">&ge;90% - A'lo</span>
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-full bg-accent"></span>
+                        <span class="text-muted-foreground">70-89% - O'rta</span>
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="w-3 h-3 rounded-full bg-destructive"></span>
+                        <span class="text-muted-foreground">&lt;70% - Kam</span>
+                    </span>
+                </div>
+            </div>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-border">
+                <thead class="bg-muted/50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">FISH</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Bor</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Yo'q</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Jami</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Foiz</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">#</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase">FISH</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase">
+                            <span class="flex items-center justify-center gap-1">
+                                <i data-lucide="check" class="w-4 h-4 text-success"></i>
+                                Bor
+                            </span>
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase">
+                            <span class="flex items-center justify-center gap-1">
+                                <i data-lucide="x" class="w-4 h-4 text-destructive"></i>
+                                Yo'q
+                            </span>
+                        </th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase">Jami</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase">
+                            <span class="flex items-center justify-center gap-1">
+                                <i data-lucide="percent" class="w-4 h-4"></i>
+                                Foiz
+                            </span>
+                        </th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="divide-y divide-border">
                     @forelse($hisobot as $index => $item)
-                    <tr class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $index + 1 }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {{ $item['talaba']->fish }}
+                    <tr class="hover:bg-muted/30 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{{ $index + 1 }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 flex-shrink-0 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <span class="text-primary font-semibold text-sm">{{ strtoupper(substr($item['talaba']->fish, 0, 1)) }}</span>
+                                </div>
+                                <span class="text-sm font-medium text-foreground">{{ $item['talaba']->fish }}</span>
+                            </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-green-600 font-semibold">
-                            {{ $item['bor'] }}
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-success font-semibold">{{ $item['bor'] }}</span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-red-600 font-semibold">
-                            {{ $item['yoq'] }}
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            <span class="text-destructive font-semibold">{{ $item['yoq'] }}</span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-center text-sm text-gray-700 font-medium">
+                        <td class="px-6 py-4 whitespace-nowrap text-center text-foreground font-medium">
                             {{ $item['bor'] + $item['yoq'] }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
-                            <span class="px-3 py-1 text-xs rounded-full font-bold
-                                {{ $item['foiz'] >= 90 ? 'bg-green-100 text-green-800' : ($item['foiz'] >= 70 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
-                                {{ $item['foiz'] }}%
-                            </span>
+                            @if($item['foiz'] >= 90)
+                            <span class="badge badge-success">{{ $item['foiz'] }}%</span>
+                            @elseif($item['foiz'] >= 70)
+                            <span class="badge" style="background: var(--accent); color: white;">{{ $item['foiz'] }}%</span>
+                            @else
+                            <span class="badge badge-destructive">{{ $item['foiz'] }}%</span>
+                            @endif
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                            <svg class="w-12 h-12 mx-auto text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Bu oy uchun davomat ma'lumotlari yo'q
+                        <td colspan="6" class="px-6 py-12 text-center">
+                            <i data-lucide="file-x" class="w-12 h-12 text-muted-foreground mx-auto mb-4"></i>
+                            <p class="text-muted-foreground">Bu oy uchun davomat ma'lumotlari yo'q</p>
                         </td>
                     </tr>
                     @endforelse
@@ -97,12 +143,16 @@
 
     <!-- Back Button -->
     <div>
-        <a href="{{ route('export.index') }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
+        <a href="{{ route('export.index') }}" class="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-medium">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
             Export sahifasiga qaytish
         </a>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    setTimeout(() => { lucide.createIcons(); }, 100);
+</script>
+@endpush
 @endsection

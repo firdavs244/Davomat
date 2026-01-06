@@ -8,28 +8,26 @@
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <p class="text-gray-500">Barcha talabalar ro'yxati</p>
+            <p class="text-muted-foreground">Barcha talabalar ro'yxati</p>
         </div>
         @if(auth()->user()->isAdmin())
-        <a href="{{ route('talabalar.create') }}"
-           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
+        <a href="{{ route('talabalar.create') }}" class="btn btn-primary gap-2">
+            <i data-lucide="plus" class="w-5 h-5"></i>
             Yangi Talaba
         </a>
         @endif
     </div>
 
     <!-- Filter -->
-    <div class="bg-white rounded-xl shadow-sm p-4">
+    <div class="bg-card rounded-xl border border-border p-4">
         <form action="{{ route('talabalar.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"></i>
                 <input type="text" name="qidiruv" value="{{ request('qidiruv') }}" placeholder="FISH bo'yicha qidirish..."
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                       class="input pl-10">
             </div>
             <div>
-                <select name="guruh_id" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <select name="guruh_id" class="input">
                     <option value="">Barcha guruhlar</option>
                     @foreach($guruhlar as $guruh)
                     <option value="{{ $guruh->id }}" {{ request('guruh_id') == $guruh->id ? 'selected' : '' }}>{{ $guruh->nomi }}</option>
@@ -37,14 +35,15 @@
                 </select>
             </div>
             <div>
-                <select name="holat" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <select name="holat" class="input">
                     <option value="">Barcha holatlar</option>
                     <option value="aktiv" {{ request('holat') == 'aktiv' ? 'selected' : '' }}>Aktiv</option>
                     <option value="noaktiv" {{ request('holat') == 'noaktiv' ? 'selected' : '' }}>Noaktiv</option>
                 </select>
             </div>
             <div>
-                <button type="submit" class="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">
+                <button type="submit" class="btn btn-outline w-full gap-2">
+                    <i data-lucide="filter" class="w-4 h-4"></i>
                     Qidirish
                 </button>
             </div>
@@ -52,61 +51,66 @@
     </div>
 
     <!-- Table -->
-    <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="bg-card rounded-xl border border-border overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-border">
+                <thead class="bg-muted/50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">#</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">FISH</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Guruh</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kirgan sana</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Holati</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">#</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">FISH</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Guruh</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Kirgan sana</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Holati</th>
                         @if(auth()->user()->isAdmin())
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amallar</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Amallar</th>
                         @endif
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody class="divide-y divide-border">
                     @forelse($talabalar as $index => $talaba)
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <tr class="hover:bg-muted/30 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                             {{ ($talabalar->currentPage() - 1) * $talabalar->perPage() + $index + 1 }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 flex-shrink-0 bg-blue-100 rounded-full flex items-center justify-center">
-                                    <span class="text-blue-600 font-semibold">{{ strtoupper(substr($talaba->fish, 0, 1)) }}</span>
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 flex-shrink-0 bg-primary/10 rounded-full flex items-center justify-center">
+                                    <span class="text-primary font-semibold">{{ strtoupper(substr($talaba->fish, 0, 1)) }}</span>
                                 </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">{{ $talaba->fish }}</div>
-                                </div>
+                                <span class="text-sm font-medium text-foreground">{{ $talaba->fish }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded-full">
+                            <span class="badge badge-primary">
                                 {{ $talaba->guruh?->nomi ?? 'Guruhsiz' }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                             {{ $talaba->kirgan_sana->format('d.m.Y') }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 py-1 text-xs rounded-full {{ $talaba->holati === 'aktiv' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600' }}">
+                            <span class="badge {{ $talaba->holati === 'aktiv' ? 'badge-success' : 'badge-muted' }}">
                                 {{ $talaba->holat_nomi }}
                             </span>
                         </td>
                         @if(auth()->user()->isAdmin())
-                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
-                            <a href="{{ route('talabalar.show', $talaba) }}" class="text-gray-600 hover:text-gray-900">Ko'rish</a>
-                            <a href="{{ route('talabalar.edit', $talaba) }}" class="text-blue-600 hover:text-blue-900">Tahrirlash</a>
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{{ route('talabalar.show', $talaba) }}" class="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Ko'rish">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </a>
+                                <a href="{{ route('talabalar.edit', $talaba) }}" class="p-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Tahrirlash">
+                                    <i data-lucide="edit" class="w-4 h-4"></i>
+                                </a>
+                            </div>
                         </td>
                         @endif
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
-                            Talabalar topilmadi
+                        <td colspan="6" class="px-6 py-12 text-center">
+                            <i data-lucide="users" class="w-12 h-12 text-muted-foreground mx-auto mb-4"></i>
+                            <p class="text-muted-foreground">Talabalar topilmadi</p>
                         </td>
                     </tr>
                     @endforelse
@@ -115,9 +119,15 @@
         </div>
 
         <!-- Pagination -->
-        <div class="px-6 py-4 border-t border-gray-200">
+        <div class="px-6 py-4 border-t border-border">
             {{ $talabalar->withQueryString()->links() }}
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    setTimeout(() => { lucide.createIcons(); }, 100);
+</script>
+@endpush
 @endsection

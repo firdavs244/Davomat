@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     // Dashboard - barcha foydalanuvchilar uchun
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [DashboardController::class, 'refreshStats'])->name('dashboard.refresh');
+    Route::get('/dashboard/stats/{period}', [DashboardController::class, 'getStatsByPeriod'])->name('dashboard.stats');
 
     // ===== ADMIN ROUTES =====
     Route::middleware('admin')->group(function () {
