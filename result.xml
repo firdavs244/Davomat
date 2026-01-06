@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="C:\Users\Firdavs\Desktop\davomat\phpunit.xml" tests="1" assertions="5" errors="0" failures="1" skipped="0" time="3.135751">
+    <testsuite name="Feature" tests="1" assertions="5" errors="0" failures="1" skipped="0" time="3.135751">
+      <testsuite name="Tests\Feature\GuruhTest" file="C:\Users\Firdavs\Desktop\davomat\tests\Feature\GuruhTest.php" tests="1" assertions="5" errors="0" failures="1" skipped="0" time="3.135751">
+        <testcase name="admin_can_update_guruh" file="C:\Users\Firdavs\Desktop\davomat\tests\Feature\GuruhTest.php" line="55" class="Tests\Feature\GuruhTest" classname="Tests.Feature.GuruhTest" assertions="5" time="3.135751">
+          <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\GuruhTest::admin_can_update_guruh&#13;
+Failed asserting that two strings are equal.
+--- Expected
++++ Actual
+@@ @@
+-'AT-102'
++'AT-101'
+&#13;
+C:\Users\Firdavs\Desktop\davomat\tests\Feature\GuruhTest.php:75</failure>
+        </testcase>
+      </testsuite>
+    </testsuite>
+  </testsuite>
+</testsuites>
