@@ -53,14 +53,50 @@
         </form>
     </div>
 
-    <!-- Results Table -->
+    @php
+        // Davomatlarni sana va talaba bo'yicha guruhlash
+        $groupedData = [];
+        foreach($davomatlar as $davomat) {
+            $sana = $davomat->sana->format('Y-m-d');
+            $talabaId = $davomat->talaba_id;
+
+            if (!isset($groupedData[$sana])) {
+                $groupedData[$sana] = [
+                    'sana' => $davomat->sana,
+                    'talabalar' => []
+                ];
+            }
+
+            if (!isset($groupedData[$sana]['talabalar'][$talabaId])) {
+                $groupedData[$sana]['talabalar'][$talabaId] = [
+                    'talaba' => $davomat->talaba,
+                    'guruh' => $davomat->guruh,
+                    'davomat' => $davomat,
+                    'xodim' => $davomat->xodim
+                ];
+            }
+        }
+    @endphp
+
+    <!-- Results - Grouped by Date -->
+    @forelse($groupedData as $sanaKey => $sanaData)
     <div class="bg-card rounded-xl border border-border overflow-hidden">
+        <!-- Date Header -->
+        <div class="bg-primary/10 px-6 py-3 border-b border-border flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i data-lucide="calendar" class="w-5 h-5 text-primary"></i>
+                <span class="font-semibold text-foreground">{{ $sanaData['sana']->format('d.m.Y') }}</span>
+                <span class="text-sm text-muted-foreground">({{ $sanaData['sana']->locale('uz')->dayName }})</span>
+            </div>
+            <span class="badge badge-secondary">{{ count($sanaData['talabalar']) }} ta talaba</span>
+        </div>
+
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-border">
                 <thead class="bg-muted/50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Sana</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Talaba</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider w-8">№</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Talaba FISH</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Guruh</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">1-para</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">2-para</th>
@@ -72,22 +108,21 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
-                    @forelse($davomatlar as $davomat)
+                    @php $counter = 0; @endphp
+                    @foreach($sanaData['talabalar'] as $talabaData)
+                    @php $counter++; $davomat = $talabaData['davomat']; @endphp
                     <tr class="hover:bg-muted/30 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-foreground flex items-center gap-2">
-                            <i data-lucide="calendar" class="w-4 h-4 text-muted-foreground"></i>
-                            {{ $davomat->sana->format('d.m.Y') }}
-                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{{ $counter }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center gap-3">
                                 <div class="w-8 h-8 flex-shrink-0 bg-primary/10 rounded-full flex items-center justify-center">
-                                    <span class="text-primary font-semibold text-sm">{{ strtoupper(substr($davomat->talaba?->fish ?? 'N', 0, 1)) }}</span>
+                                    <span class="text-primary font-semibold text-sm">{{ strtoupper(substr($talabaData['talaba']?->fish ?? 'N', 0, 1)) }}</span>
                                 </div>
-                                <span class="text-sm font-medium text-foreground">{{ $davomat->talaba?->fish ?? 'Noma\'lum' }}</span>
+                                <span class="text-sm font-medium text-foreground">{{ $talabaData['talaba']?->fish ?? 'Noma\'lum' }}</span>
                             </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="badge badge-secondary">{{ $davomat->guruh?->nomi ?? '-' }}</span>
+                            <span class="badge badge-secondary">{{ $talabaData['guruh']?->nomi ?? '-' }}</span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-center">
                             @if($davomat->para_1 === 'bor')
@@ -117,7 +152,7 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                            {{ $davomat->xodim->name }}
+                            {{ $talabaData['xodim']?->name ?? '-' }}
                         </td>
                         @if(auth()->user()->isAdmin())
                         <td class="px-6 py-4 whitespace-nowrap text-right">
@@ -136,22 +171,21 @@
                         </td>
                         @endif
                     </tr>
-                    @empty
-                    <tr>
-                        <td colspan="8" class="px-6 py-12 text-center">
-                            <i data-lucide="clipboard" class="w-12 h-12 text-muted-foreground mx-auto mb-4"></i>
-                            <p class="text-muted-foreground">Ma'lumot topilmadi</p>
-                        </td>
-                    </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
         </div>
+    </div>
+    @empty
+    <div class="bg-card rounded-xl border border-border p-12 text-center">
+        <i data-lucide="clipboard" class="w-12 h-12 text-muted-foreground mx-auto mb-4"></i>
+        <p class="text-muted-foreground">Ma'lumot topilmadi</p>
+    </div>
+    @endforelse
 
-        <!-- Pagination -->
-        <div class="px-6 py-4 border-t border-border">
-            {{ $davomatlar->withQueryString()->links() }}
-        </div>
+    <!-- Pagination -->
+    <div class="bg-card rounded-xl border border-border px-6 py-4">
+        {{ $davomatlar->withQueryString()->links() }}
     </div>
 </div>
 

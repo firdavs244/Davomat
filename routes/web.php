@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DavomatController;
+use App\Http\Controllers\DavomatHisobotController;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\FoydalanuvchiController;
 use App\Http\Controllers\GuruhController;
@@ -35,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/refresh', [DashboardController::class, 'refreshStats'])->name('dashboard.refresh');
     Route::get('/dashboard/stats/{period}', [DashboardController::class, 'getStatsByPeriod'])->name('dashboard.stats');
+    Route::get('/dashboard/kurs-statistika', [DashboardController::class, 'getKursStatistika'])->name('dashboard.kurs-statistika');
+    Route::get('/dashboard/realtime', [DashboardController::class, 'getRealTimeStats'])->name('dashboard.realtime');
 
     // ===== ADMIN ROUTES =====
     Route::middleware('admin')->group(function () {
@@ -69,14 +72,21 @@ Route::middleware('auth')->group(function () {
         Route::get('/export', [ExportController::class, 'index'])->name('export.index');
         Route::post('/export/excel', [ExportController::class, 'exportCSV'])->name('export.csv');
         Route::get('/export/guruh/{guruh}', [ExportController::class, 'guruhHisoboti'])->name('export.guruh');
+
+        // Davomat hisoboti - admin uchun
+        Route::get('/davomat/hisobot', [DavomatHisobotController::class, 'index'])->name('davomat.hisobot');
+        Route::get('/davomat/hisobot/para', [DavomatHisobotController::class, 'paraHisobot'])->name('davomat.hisobot.para');
+        Route::get('/davomat/hisobot/oluvchi/{user}', [DavomatHisobotController::class, 'davomatOluvchiFaoliyati'])->name('davomat.hisobot.oluvchi');
     });
 
     // ===== DAVOMAT OLUVCHI ROUTES =====
-    Route::middleware('davomat.oluvchi')->group(function () {
+    Route::middleware(['davomat.oluvchi', 'davomat.vaqt'])->group(function () {
         Route::get('/davomat/olish', [DavomatController::class, 'olish'])->name('davomat.olish');
         Route::post('/davomat/saqlash', [DavomatController::class, 'saqlash'])->name('davomat.saqlash');
         Route::get('/davomat/mening-tarixim', [DavomatController::class, 'meningTarixim'])->name('davomat.mening-tarixim');
         Route::get('/davomat/guruh-davomat', [DavomatController::class, 'getGuruhDavomat'])->name('davomat.guruh-davomat');
+        Route::get('/davomat/guruhlar-qidirish', [DavomatController::class, 'guruhlarQidirish'])->name('davomat.guruhlar-qidirish');
+        Route::get('/davomat/para-holati', [DavomatController::class, 'paraHolati'])->name('davomat.para-holati');
     });
 
     // ===== ADMIN VA DAVOMAT OLUVCHI UCHUN =====

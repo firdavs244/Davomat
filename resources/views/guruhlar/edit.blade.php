@@ -42,8 +42,6 @@
                 <select name="kurs" class="input">
                     <option value="1" {{ old('kurs', $guruh->kurs) == 1 ? 'selected' : '' }}>1-kurs</option>
                     <option value="2" {{ old('kurs', $guruh->kurs) == 2 ? 'selected' : '' }}>2-kurs</option>
-                    <option value="3" {{ old('kurs', $guruh->kurs) == 3 ? 'selected' : '' }}>3-kurs</option>
-                    <option value="4" {{ old('kurs', $guruh->kurs) == 4 ? 'selected' : '' }}>4-kurs</option>
                 </select>
                 @error('kurs')
                 <p class="mt-1 text-sm text-destructive flex items-center gap-1">

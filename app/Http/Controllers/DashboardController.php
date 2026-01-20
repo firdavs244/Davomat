@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ParaVaqtlari;
 use App\Models\Davomat;
 use App\Models\Guruh;
 use App\Models\Talaba;
@@ -34,9 +35,20 @@ class DashboardController extends Controller
         // Oxirgi 7 kunlik trend
         $kunlikTrend = $this->getKunlikTrend();
 
-        // Jami statistika
-        $jamiGuruhlar = Guruh::aktiv()->count();
-        $jamiTalabalar = Talaba::aktiv()->count();
+        // Jami statistika (faqat 1 va 2-kurs)
+        $jamiGuruhlar = Guruh::aktiv()->whereIn('kurs', [1, 2])->count();
+        $jamiTalabalar = Talaba::aktiv()
+            ->whereHas('guruh', fn($q) => $q->whereIn('kurs', [1, 2]))
+            ->count();
+
+        // Kurs bo'yicha hozirgi para statistikasi (real-time)
+        $kursStatistikasi = $this->getKursStatistikasi();
+
+        // Para holati
+        $paraHolati = ParaVaqtlari::holatInfo();
+
+        // Tugagan paralar umumiy ma'lumoti
+        $tugaganParalarSummary = $this->getTugaganParalarSummary();
 
         return view('dashboard', compact(
             'bugungiStatistika',
@@ -45,7 +57,10 @@ class DashboardController extends Controller
             'engKopYoqTalabalar',
             'kunlikTrend',
             'jamiGuruhlar',
-            'jamiTalabalar'
+            'jamiTalabalar',
+            'kursStatistikasi',
+            'paraHolati',
+            'tugaganParalarSummary'
         ));
     }
 
@@ -54,13 +69,17 @@ class DashboardController extends Controller
      */
     private function getBugungiStatistika(): array
     {
-        $bugun = now()->toDateString();
+        $bugun = ParaVaqtlari::bugungiSana();
 
-        // Aktiv talabalar soni
-        $jamiTalabalar = Talaba::aktiv()->count();
+        // Aktiv talabalar soni (faqat 1 va 2-kurs)
+        $jamiTalabalar = Talaba::aktiv()
+            ->whereHas('guruh', fn($q) => $q->whereIn('kurs', [1, 2]))
+            ->count();
 
         // Bugungi davomat olingan talabalar
-        $davomatlar = Davomat::where('sana', $bugun)->get();
+        $davomatlar = Davomat::where('sana', $bugun)
+            ->whereHas('guruh', fn($q) => $q->whereIn('kurs', [1, 2]))
+            ->get();
 
         $borParalar = 0;
         $yoqParalar = 0;
@@ -88,13 +107,67 @@ class DashboardController extends Controller
     }
 
     /**
+     * Kurs bo'yicha hozirgi para statistikasi (real-time)
+     */
+    private function getKursStatistikasi(): array
+    {
+        $bugun = ParaVaqtlari::bugungiSana();
+        $hozirgiPara = ParaVaqtlari::hozirgiDavomatPara();
+
+        $statistika = [];
+
+        foreach ([1, 2] as $kurs) {
+            // Kurs bo'yicha jami aktiv talabalar
+            $jamiTalabalar = Talaba::aktiv()
+                ->whereHas('guruh', fn($q) => $q->where('kurs', $kurs))
+                ->count();
+
+            // Bugungi hozirgi para uchun davomat
+            $paraField = $hozirgiPara ? 'para_' . $hozirgiPara : null;
+
+            $bor = 0;
+            $yoq = 0;
+            $davomatOlingan = 0;
+
+            if ($paraField) {
+                $davomatlar = Davomat::where('sana', $bugun)
+                    ->whereHas('guruh', fn($q) => $q->where('kurs', $kurs))
+                    ->whereNotNull($paraField)
+                    ->get();
+
+                $davomatOlingan = $davomatlar->count();
+
+                foreach ($davomatlar as $d) {
+                    if ($d->$paraField === 'bor') $bor++;
+                    elseif ($d->$paraField === 'yoq') $yoq++;
+                }
+            }
+
+            $foiz = $davomatOlingan > 0 ? round(($bor / $davomatOlingan) * 100, 1) : 0;
+
+            $statistika[$kurs] = [
+                'kurs' => $kurs,
+                'jami_talabalar' => $jamiTalabalar,
+                'davomat_olingan' => $davomatOlingan,
+                'bor' => $bor,
+                'yoq' => $yoq,
+                'foiz' => $foiz,
+                'guruhlar_soni' => Guruh::aktiv()->where('kurs', $kurs)->count(),
+            ];
+        }
+
+        return $statistika;
+    }
+
+    /**
      * Guruhlar bo'yicha statistika
      */
     private function getGuruhlarStatistikasi(): array
     {
-        $bugun = now()->toDateString();
+        $bugun = ParaVaqtlari::bugungiSana();
 
         $guruhlar = Guruh::aktiv()
+            ->whereIn('kurs', [1, 2])
             ->withCount(['aktivTalabalar'])
             ->get();
 
@@ -177,6 +250,88 @@ class DashboardController extends Controller
     }
 
     /**
+     * Tugagan paralar uchun umumiy summary
+     * Bu funksiya dashboard'da tugagan paralar haqida ma'lumot ko'rsatish uchun
+     */
+    private function getTugaganParalarSummary(): array
+    {
+        $bugun = ParaVaqtlari::bugungiSana();
+        $paralar = ParaVaqtlari::paralar();
+        $summary = [];
+
+        // Bugungi barcha davomatlar
+        $barDavomatlar = Davomat::where('sana', $bugun)
+            ->with(['guruh'])
+            ->get();
+
+        foreach ([1, 2, 3] as $para) {
+            // Para tugaganmi tekshirish
+            $paraTugadi = ParaVaqtlari::paraTugadimi($para);
+            $paraField = 'para_' . $para;
+
+            if (!$paraTugadi) {
+                $summary[$para] = [
+                    'tugadi' => false,
+                    'vaqt' => $paralar[$para],
+                ];
+                continue;
+            }
+
+            // Bu para uchun to'ldirilgan davomatlar
+            $davomatlar = $barDavomatlar->filter(fn($d) => $d->$paraField !== null);
+
+            // Faqat 1-kurs va 2-kurs guruhlar
+            $jamiGuruhlar = Guruh::aktiv()->whereIn('kurs', [1, 2])->count();
+            $davomatOlinganGuruhlar = $davomatlar->unique('guruh_id')->count();
+
+            // Kelgan/Kelmaganlar soni
+            $keldi = $davomatlar->where($paraField, 'bor')->count();
+            $kelmadi = $davomatlar->where($paraField, 'yoq')->count();
+            $jami = $keldi + $kelmadi;
+
+            // Kurs bo'yicha statistika
+            $kurs1Keldi = 0;
+            $kurs1Jami = 0;
+            $kurs2Keldi = 0;
+            $kurs2Jami = 0;
+
+            foreach ($davomatlar as $d) {
+                if ($d->guruh && $d->guruh->kurs == 1) {
+                    $kurs1Jami++;
+                    if ($d->$paraField == 'bor') $kurs1Keldi++;
+                } elseif ($d->guruh && $d->guruh->kurs == 2) {
+                    $kurs2Jami++;
+                    if ($d->$paraField == 'bor') $kurs2Keldi++;
+                }
+            }
+
+            $summary[$para] = [
+                'tugadi' => true,
+                'vaqt' => $paralar[$para],
+                'jami_guruhlar' => $jamiGuruhlar,
+                'davomat_olingan_guruhlar' => $davomatOlinganGuruhlar,
+                'olinmagan_guruhlar' => $jamiGuruhlar - $davomatOlinganGuruhlar,
+                'jami_talabalar' => $jami,
+                'keldi' => $keldi,
+                'kelmadi' => $kelmadi,
+                'foiz' => $jami > 0 ? round(($keldi / $jami) * 100, 1) : 0,
+                'kurs1' => [
+                    'keldi' => $kurs1Keldi,
+                    'jami' => $kurs1Jami,
+                    'foiz' => $kurs1Jami > 0 ? round(($kurs1Keldi / $kurs1Jami) * 100, 1) : 0,
+                ],
+                'kurs2' => [
+                    'keldi' => $kurs2Keldi,
+                    'jami' => $kurs2Jami,
+                    'foiz' => $kurs2Jami > 0 ? round(($kurs2Keldi / $kurs2Jami) * 100, 1) : 0,
+                ],
+            ];
+        }
+
+        return $summary;
+    }
+
+    /**
      * Oxirgi 7 kunlik davomat trendi
      */
     private function getKunlikTrend(): array
@@ -241,6 +396,86 @@ class DashboardController extends Controller
         return response()->json([
             'bugungi' => $this->getBugungiStatistika(),
             'haftalik_ortacha' => Davomat::haftalikOrtacha(),
+            'kurs_statistikasi' => $this->getKursStatistikasi(),
+            'para_holati' => ParaVaqtlari::holatInfo(),
+        ]);
+    }
+
+    /**
+     * AJAX: Kurs statistikasi (real-time)
+     */
+    public function getKursStatistika()
+    {
+        return response()->json([
+            'kurs_statistikasi' => $this->getKursStatistikasi(),
+            'para_holati' => ParaVaqtlari::holatInfo(),
+            'bugungi' => $this->getBugungiStatistika(),
+        ]);
+    }
+
+    /**
+     * AJAX: Real-time statistika (har 30 sekundda yangilanadi)
+     */
+    public function getRealTimeStats()
+    {
+        $hozirgiPara = ParaVaqtlari::hozirgiDavomatPara();
+        $bugun = ParaVaqtlari::bugungiSana();
+
+        // Kurslar bo'yicha hozirgi para statistikasi
+        $kurslar = [];
+
+        foreach ([1, 2] as $kurs) {
+            $jamiTalabalar = Talaba::aktiv()
+                ->whereHas('guruh', fn($q) => $q->where('kurs', $kurs))
+                ->count();
+
+            $jamiGuruhlar = Guruh::aktiv()->where('kurs', $kurs)->count();
+
+            $paraStats = [];
+
+            // Har bir para uchun statistika
+            foreach ([1, 2, 3] as $para) {
+                $paraField = 'para_' . $para;
+
+                $davomatlar = Davomat::where('sana', $bugun)
+                    ->whereHas('guruh', fn($q) => $q->where('kurs', $kurs))
+                    ->whereNotNull($paraField)
+                    ->get();
+
+                $bor = $davomatlar->where($paraField, 'bor')->count();
+                $yoq = $davomatlar->where($paraField, 'yoq')->count();
+                $jami = $bor + $yoq;
+
+                $paraStats[$para] = [
+                    'bor' => $bor,
+                    'yoq' => $yoq,
+                    'jami' => $jami,
+                    'foiz' => $jami > 0 ? round(($bor / $jami) * 100, 1) : 0,
+                    'tugagan' => ParaVaqtlari::paraTugadimi($para),
+                ];
+            }
+
+            // Jami statistika (barcha paralar)
+            $borJami = array_sum(array_column($paraStats, 'bor'));
+            $yoqJami = array_sum(array_column($paraStats, 'yoq'));
+            $jamiJami = $borJami + $yoqJami;
+
+            $kurslar[$kurs] = [
+                'kurs' => $kurs,
+                'jami_talabalar' => $jamiTalabalar,
+                'jami_guruhlar' => $jamiGuruhlar,
+                'paralar' => $paraStats,
+                'jami_bor' => $borJami,
+                'jami_yoq' => $yoqJami,
+                'jami_foiz' => $jamiJami > 0 ? round(($borJami / $jamiJami) * 100, 1) : 0,
+            ];
+        }
+
+        return response()->json([
+            'kurslar' => $kurslar,
+            'para_holati' => ParaVaqtlari::holatInfo(),
+            'server_vaqt' => ParaVaqtlari::hozirgiVaqt()->format('H:i:s'),
+            'bugungi_sana' => $bugun,
         ]);
     }
 

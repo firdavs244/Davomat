@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Helpers\ParaVaqtlari;
 use App\Models\Davomat;
 use App\Models\Guruh;
 use App\Models\Talaba;
@@ -16,19 +17,57 @@ class DavomatController extends Controller
      */
     public function olish(Request $request)
     {
-        $sana = $request->input('sana', now()->toDateString());
-        $para = $request->input('para', 1);
+        $user = auth()->user();
+        $isAdmin = $user->isAdmin();
+
+        // Sana va para avtomatik tanlanadi (davomat_oluvchi uchun)
+        if ($isAdmin) {
+            $sana = $request->input('sana', ParaVaqtlari::bugungiSana());
+            $para = $request->input('para', ParaVaqtlari::hozirgiDavomatPara() ?? 1);
+        } else {
+            // Davomat oluvchi faqat bugungi kun va hozirgi para
+            $sana = ParaVaqtlari::bugungiSana();
+            $para = ParaVaqtlari::hozirgiDavomatPara();
+
+            // Agar hech qanday para tugamagan bo'lsa
+            if ($para === null) {
+                $keyingiTugash = ParaVaqtlari::keyingiParaTugashVaqti();
+                $qolganVaqt = $keyingiTugash ? $keyingiTugash->diffForHumans() : null;
+
+                return view('davomat.olish', [
+                    'xabar' => 'Hozircha davomat olish uchun vaqt kelmadi. Birinchi para tugashini kuting.',
+                    'keyingiTugash' => $keyingiTugash,
+                    'qolganVaqt' => $qolganVaqt,
+                    'paraHolati' => ParaVaqtlari::holatInfo(),
+                    'guruhlar' => collect(),
+                    'talabalar' => collect(),
+                    'mavjudDavomat' => collect(),
+                    'sana' => $sana,
+                    'para' => null,
+                    'guruhId' => null,
+                    'isAdmin' => false,
+                    'mavjudParalar' => [],
+                    'paralarRoyxati' => ParaVaqtlari::barchaParalar(),
+                ]);
+            }
+        }
+
         $guruhId = $request->input('guruh_id');
-        
-        $guruhlar = Guruh::aktiv()->orderBy('nomi')->get();
-        
+
+        // Faqat 1-kurs va 2-kurs guruhlarini olish
+        $guruhlar = Guruh::aktiv()
+            ->whereIn('kurs', [1, 2])
+            ->orderBy('kurs')
+            ->orderBy('nomi')
+            ->get();
+
         $talabalar = collect();
         $mavjudDavomat = collect();
-        
+        $davomatOlingan = false;
+
         if ($guruhId) {
-            // Faqat shu kunda kollej talabasi bo'lganlarni olish
             $sanaCarbonObj = Carbon::parse($sana);
-            
+
             $talabalar = Talaba::aktiv()
                 ->where('guruh_id', $guruhId)
                 ->where('kirgan_sana', '<=', $sana)
@@ -38,21 +77,44 @@ class DavomatController extends Controller
                 })
                 ->orderBy('fish')
                 ->get();
-            
+
             // Mavjud davomat ma'lumotlarini olish
             $mavjudDavomat = Davomat::where('guruh_id', $guruhId)
                 ->where('sana', $sana)
                 ->pluck('para_' . $para, 'talaba_id');
+
+            // Bu guruh uchun davomat olinganmi tekshirish (davomat_oluvchi uchun)
+            if (!$isAdmin && $mavjudDavomat->isNotEmpty()) {
+                $davomatOlingan = true;
+            }
         }
-        
+
+        // Guruhlarni JSON formatga tayyorlash (view uchun)
+        $guruhlarJson = $guruhlar->map(function ($g) {
+            return [
+                'id' => $g->id,
+                'nomi' => $g->nomi,
+                'kurs' => $g->kurs,
+                'talabalar_soni' => $g->aktiv_talabalar_soni ?? 0,
+                'davomat_olingan' => false
+            ];
+        })->values();
+
         return view('davomat.olish', compact(
             'guruhlar',
+            'guruhlarJson',
             'talabalar',
             'mavjudDavomat',
             'sana',
             'para',
-            'guruhId'
-        ));
+            'guruhId',
+            'isAdmin',
+            'davomatOlingan'
+        ) + [
+            'mavjudParalar' => ParaVaqtlari::mavjudParalar(),
+            'paralarRoyxati' => ParaVaqtlari::barchaParalar(),
+            'paraHolati' => ParaVaqtlari::holatInfo(),
+        ]);
     }
 
     /**
@@ -79,9 +141,9 @@ class DavomatController extends Controller
 
         $para = 'para_' . $validated['para'];
         $xodimId = auth()->id();
-        
+
         DB::beginTransaction();
-        
+
         try {
             foreach ($validated['davomat'] as $talabaId => $holat) {
                 // Talabani tekshirish
@@ -89,27 +151,27 @@ class DavomatController extends Controller
                 if (!$talaba || $talaba->guruh_id != $validated['guruh_id']) {
                     continue;
                 }
-                
+
                 // Davomat yozuvini topish yoki yaratish
                 $davomat = Davomat::firstOrNew([
                     'talaba_id' => $talabaId,
                     'sana' => $validated['sana'],
                 ]);
-                
+
                 $davomat->guruh_id = $validated['guruh_id'];
                 $davomat->$para = $holat;
                 $davomat->xodim_id = $xodimId;
                 $davomat->save();
             }
-            
+
             DB::commit();
-            
+
             return redirect()->route('davomat.olish', [
                 'guruh_id' => $validated['guruh_id'],
                 'sana' => $validated['sana'],
                 'para' => $validated['para'],
             ])->with('muvaffaqiyat', $validated['para'] . '-para davomati muvaffaqiyatli saqlandi!');
-            
+
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withInput()->with('xato', 'Xatolik yuz berdi: ' . $e->getMessage());
@@ -122,21 +184,21 @@ class DavomatController extends Controller
     public function tarixi(Request $request)
     {
         $query = Davomat::with(['talaba', 'guruh', 'xodim']);
-        
+
         // Guruh bo'yicha filter
         if ($request->filled('guruh_id')) {
             $query->where('guruh_id', $request->input('guruh_id'));
         }
-        
+
         // Sana bo'yicha filter
         if ($request->filled('sana_dan')) {
             $query->where('sana', '>=', $request->input('sana_dan'));
         }
-        
+
         if ($request->filled('sana_gacha')) {
             $query->where('sana', '<=', $request->input('sana_gacha'));
         }
-        
+
         // Talaba bo'yicha qidiruv
         if ($request->filled('talaba')) {
             $talaba = $request->input('talaba');
@@ -144,13 +206,13 @@ class DavomatController extends Controller
                 $q->where('fish', 'like', "%{$talaba}%");
             });
         }
-        
+
         $davomatlar = $query->orderByDesc('sana')
             ->orderBy('guruh_id')
             ->paginate(30);
-        
+
         $guruhlar = Guruh::aktiv()->orderBy('nomi')->get();
-        
+
         return view('davomat.tarixi', compact('davomatlar', 'guruhlar'));
     }
 
@@ -161,18 +223,18 @@ class DavomatController extends Controller
     {
         $query = Davomat::with(['talaba', 'guruh'])
             ->where('xodim_id', auth()->id());
-        
+
         // Sana bo'yicha filter
         if ($request->filled('sana_dan')) {
             $query->where('sana', '>=', $request->input('sana_dan'));
         }
-        
+
         if ($request->filled('sana_gacha')) {
             $query->where('sana', '<=', $request->input('sana_gacha'));
         }
-        
+
         $davomatlar = $query->orderByDesc('sana')->paginate(30);
-        
+
         return view('davomat.mening-tarixim', compact('davomatlar'));
     }
 
@@ -220,12 +282,71 @@ class DavomatController extends Controller
     public function getGuruhDavomat(Request $request)
     {
         $guruhId = $request->input('guruh_id');
-        $sana = $request->input('sana', now()->toDateString());
-        
+        $sana = $request->input('sana', ParaVaqtlari::bugungiSana());
+
         $davomatlar = Davomat::where('guruh_id', $guruhId)
             ->where('sana', $sana)
             ->get(['talaba_id', 'para_1', 'para_2', 'para_3']);
-        
+
         return response()->json($davomatlar);
+    }
+
+    /**
+     * AJAX: Guruhlarni real-time qidirish
+     */
+    public function guruhlarQidirish(Request $request)
+    {
+        $qidiruv = $request->input('q', '');
+        $kurs = $request->input('kurs');
+
+        $query = Guruh::aktiv()
+            ->whereIn('kurs', [1, 2]);
+
+        if (!empty($qidiruv)) {
+            $query->where('nomi', 'like', '%' . $qidiruv . '%');
+        }
+
+        if ($kurs) {
+            $query->where('kurs', $kurs);
+        }
+
+        $guruhlar = $query->orderBy('kurs')
+            ->orderBy('nomi')
+            ->limit(20)
+            ->get(['id', 'nomi', 'kurs', 'yunalish']);
+
+        // Har bir guruh uchun bugungi davomat holatini tekshirish
+        $bugun = ParaVaqtlari::bugungiSana();
+        $hozirgiPara = ParaVaqtlari::hozirgiDavomatPara();
+
+        $natija = $guruhlar->map(function ($guruh) use ($bugun, $hozirgiPara) {
+            $davomatOlingan = false;
+
+            if ($hozirgiPara) {
+                $davomatOlingan = Davomat::where('guruh_id', $guruh->id)
+                    ->where('sana', $bugun)
+                    ->whereNotNull('para_' . $hozirgiPara)
+                    ->exists();
+            }
+
+            return [
+                'id' => $guruh->id,
+                'nomi' => $guruh->nomi,
+                'kurs' => $guruh->kurs,
+                'yunalish' => $guruh->yunalish,
+                'davomat_olingan' => $davomatOlingan,
+                'talabalar_soni' => $guruh->aktivTalabalar()->count(),
+            ];
+        });
+
+        return response()->json($natija);
+    }
+
+    /**
+     * AJAX: Para holati (timer uchun)
+     */
+    public function paraHolati()
+    {
+        return response()->json(ParaVaqtlari::holatInfo());
     }
 }

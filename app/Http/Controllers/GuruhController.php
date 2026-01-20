@@ -37,8 +37,8 @@ class GuruhController extends Controller
 
         $guruhlar = $query->orderBy('nomi')->paginate(15);
 
-        // Filterlar uchun ma'lumotlar
-        $kurslar = [1, 2, 3, 4];
+        // Filterlar uchun ma'lumotlar (kollejda faqat 1 va 2-kurs)
+        $kurslar = [1, 2];
         $yunalishlar = Guruh::distinct()->pluck('yunalish');
 
         return view('guruhlar.index', compact('guruhlar', 'kurslar', 'yunalishlar'));
@@ -60,7 +60,7 @@ class GuruhController extends Controller
     {
         $validated = $request->validate([
             'nomi' => 'required|string|max:50|unique:guruhlar,nomi',
-            'kurs' => 'required|integer|min:1|max:4',
+            'kurs' => 'required|integer|min:1|max:2',
             'yunalish' => 'required|string|max:100',
         ], [
             'nomi.required' => 'Guruh nomi kiritilishi shart',
@@ -68,7 +68,7 @@ class GuruhController extends Controller
             'nomi.max' => 'Guruh nomi 50 ta belgidan oshmasligi kerak',
             'kurs.required' => 'Kurs tanlanishi shart',
             'kurs.min' => 'Kurs 1 dan kam bo\'lishi mumkin emas',
-            'kurs.max' => 'Kurs 4 dan oshishi mumkin emas',
+            'kurs.max' => 'Kurs 2 dan oshishi mumkin emas (kollejda faqat 1 va 2-kurs)',
             'yunalish.required' => 'Yo\'nalish kiritilishi shart',
         ]);
 
@@ -111,7 +111,7 @@ class GuruhController extends Controller
                 'max:50',
                 Rule::unique('guruhlar', 'nomi')->ignore($guruh->id),
             ],
-            'kurs' => 'required|integer|min:1|max:4',
+            'kurs' => 'required|integer|min:1|max:2',
             'yunalish' => 'required|string|max:100',
         ], [
             'nomi.required' => 'Guruh nomi kiritilishi shart',

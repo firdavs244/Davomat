@@ -6,12 +6,9 @@ use App\Models\Davomat;
 use App\Models\Guruh;
 use App\Models\Talaba;
 use Carbon\Carbon;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithStyles;
-use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithTitle;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -20,17 +17,18 @@ use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 class DavomatExport implements
-    FromCollection,
-    WithHeadings,
+    FromArray,
     WithStyles,
-    WithColumnWidths,
     WithTitle,
     WithEvents
 {
     protected $guruh;
     protected $sanaDan;
     protected $sanaGacha;
-    protected $rowCount = 1; // Header uchun
+    protected $sanalar = [];
+    protected $talabalar;
+    protected $totalColumns = 0;
+    protected $totalRows = 0;
 
     public function __construct(Guruh $guruh, Carbon $sanaDan, Carbon $sanaGacha)
     {
@@ -40,70 +38,111 @@ class DavomatExport implements
     }
 
     /**
-     * Ma'lumotlarni to'plash
+     * Ma'lumotlarni array sifatida qaytarish
      */
-    public function collection()
+    public function array(): array
     {
-        $talabalar = Talaba::where('guruh_id', $this->guruh->id)
-            ->orderBy('fish')
-            ->get();
-
-        $data = collect();
+        // Sanalarni to'plash (faqat ish kunlari)
         $currentDate = $this->sanaDan->copy();
-
         while ($currentDate->lte($this->sanaGacha)) {
-            // Faqat ish kunlari (dushanba - shanba)
             if ($currentDate->dayOfWeek != Carbon::SUNDAY) {
-                foreach ($talabalar as $talaba) {
-                    $row = $this->getTalabaRow($talaba, $currentDate);
-                    $data->push($row);
-                    $this->rowCount++;
-                }
+                $this->sanalar[] = $currentDate->copy();
             }
             $currentDate->addDay();
         }
 
+        // Talabalarni olish
+        $this->talabalar = Talaba::where('guruh_id', $this->guruh->id)
+            ->orderBy('fish')
+            ->get();
+
+        $data = [];
+
+        // 1-qator: Sana sarlavhalari
+        $row1 = ['№', 'Talaba FISH'];
+        foreach ($this->sanalar as $sana) {
+            $row1[] = $sana->format('d.m.Y') . ' (' . $this->getHaftaKuni($sana) . ')';
+            $row1[] = ''; // 2-para uchun bo'sh
+            $row1[] = ''; // 3-para uchun bo'sh
+        }
+        $row1[] = 'Jami'; // Jami ustuni
+        $row1[] = '';
+        $row1[] = '';
+        $data[] = $row1;
+
+        // 2-qator: Para sarlavhalari
+        $row2 = ['', ''];
+        foreach ($this->sanalar as $sana) {
+            $row2[] = '1-para';
+            $row2[] = '2-para';
+            $row2[] = '3-para';
+        }
+        $row2[] = 'Bor';
+        $row2[] = "Yo'q";
+        $row2[] = '%';
+        $data[] = $row2;
+
+        // Talabalar ma'lumotlari
+        $counter = 0;
+        foreach ($this->talabalar as $talaba) {
+            $counter++;
+            $row = [$counter, $talaba->fish];
+
+            $jamiParalar = 0;
+            $borSoni = 0;
+            $yoqSoni = 0;
+
+            foreach ($this->sanalar as $sana) {
+                // Talaba bu kunda kollej talabasi ekanligini tekshirish
+                if (!$talaba->isKollejTalabasi($sana)) {
+                    $row[] = '-';
+                    $row[] = '-';
+                    $row[] = '-';
+                    continue;
+                }
+
+                // Davomat ma'lumotlarini olish
+                $davomat = Davomat::where('talaba_id', $talaba->id)
+                    ->where('sana', $sana->toDateString())
+                    ->first();
+
+                if (!$davomat) {
+                    $row[] = '-';
+                    $row[] = '-';
+                    $row[] = '-';
+                    continue;
+                }
+
+                // Para qiymatlarini qo'shish
+                $row[] = $this->getParaQiymati($davomat->para_1);
+                $row[] = $this->getParaQiymati($davomat->para_2);
+                $row[] = $this->getParaQiymati($davomat->para_3);
+
+                // Jami hisoblash
+                foreach (['para_1', 'para_2', 'para_3'] as $para) {
+                    if ($davomat->$para === 'bor') {
+                        $borSoni++;
+                        $jamiParalar++;
+                    } elseif ($davomat->$para === 'yoq') {
+                        $yoqSoni++;
+                        $jamiParalar++;
+                    }
+                }
+            }
+
+            // Jami ustunlari
+            $foiz = $jamiParalar > 0 ? round(($borSoni / $jamiParalar) * 100, 1) : 0;
+            $row[] = $borSoni;
+            $row[] = $yoqSoni;
+            $row[] = $foiz . '%';
+
+            $data[] = $row;
+        }
+
+        $this->totalColumns = count($row1);
+        $this->totalRows = count($data);
+
         return $data;
-    }
-
-    /**
-     * Sarlavhalar
-     */
-    public function headings(): array
-    {
-        return [
-            '№',
-            'Talaba FISH',
-            'Guruh',
-            'Sana',
-            'Hafta kuni',
-            '1-para',
-            '2-para',
-            '3-para',
-            'Jami yo\'qlar',
-            'Davomat %',
-            'Izoh'
-        ];
-    }
-
-    /**
-     * Ustunlar kengligi
-     */
-    public function columnWidths(): array
-    {
-        return [
-            'A' => 5,   // №
-            'B' => 30,  // Talaba FISH
-            'C' => 15,  // Guruh
-            'D' => 12,  // Sana
-            'E' => 12,  // Hafta kuni
-            'F' => 10,  // 1-para
-            'G' => 10,  // 2-para
-            'H' => 10,  // 3-para
-            'I' => 12,  // Jami yo'qlar
-            'J' => 12,  // Davomat %
-            'K' => 40,  // Izoh
-        ];
     }
 
     /**
@@ -119,11 +158,31 @@ class DavomatExport implements
      */
     public function styles(Worksheet $sheet)
     {
-        // Header stilini belgilash
-        $sheet->getStyle('A1:K1')->applyFromArray([
+        $lastCol = $this->getColumnLetter($this->totalColumns);
+        $sanalarSoni = count($this->sanalar);
+
+        // 1-qator (Sanalar) stilini belgilash
+        $sheet->getStyle('A1:' . $lastCol . '1')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'size' => 11,
+                'color' => ['rgb' => 'FFFFFF']
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '2F5496']
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+            ],
+        ]);
+
+        // 2-qator (Paralar) stilini belgilash
+        $sheet->getStyle('A2:' . $lastCol . '2')->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'size' => 10,
                 'color' => ['rgb' => 'FFFFFF']
             ],
             'fill' => [
@@ -134,6 +193,27 @@ class DavomatExport implements
                 'horizontal' => Alignment::HORIZONTAL_CENTER,
                 'vertical' => Alignment::VERTICAL_CENTER,
             ],
+        ]);
+
+        // Sana ustunlarini birlashtirish
+        $sheet->mergeCells('A1:A2'); // №
+        $sheet->mergeCells('B1:B2'); // Talaba FISH
+
+        $colIndex = 3; // C ustunidan boshlaymiz
+        foreach ($this->sanalar as $sana) {
+            $startCol = $this->getColumnLetter($colIndex);
+            $endCol = $this->getColumnLetter($colIndex + 2);
+            $sheet->mergeCells($startCol . '1:' . $endCol . '1');
+            $colIndex += 3;
+        }
+
+        // Jami ustunlarini birlashtirish
+        $jamiStartCol = $this->getColumnLetter($colIndex);
+        $jamiEndCol = $this->getColumnLetter($colIndex + 2);
+        $sheet->mergeCells($jamiStartCol . '1:' . $jamiEndCol . '1');
+
+        // Barcha ma'lumotlar uchun border
+        $sheet->getStyle('A1:' . $lastCol . $this->totalRows)->applyFromArray([
             'borders' => [
                 'allBorders' => [
                     'borderStyle' => Border::BORDER_THIN,
@@ -142,15 +222,13 @@ class DavomatExport implements
             ]
         ]);
 
-        // Barcha ma'lumotlar uchun border
-        $sheet->getStyle('A1:K' . $this->rowCount)->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'D0D0D0']
-                ]
-            ]
-        ]);
+        // Ustun kengliklarini belgilash
+        $sheet->getColumnDimension('A')->setWidth(5);
+        $sheet->getColumnDimension('B')->setWidth(30);
+
+        for ($i = 3; $i <= $this->totalColumns; $i++) {
+            $sheet->getColumnDimension($this->getColumnLetter($i))->setWidth(8);
+        }
 
         return [];
     }
@@ -163,9 +241,10 @@ class DavomatExport implements
         return [
             AfterSheet::class => function(AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
+                $lastCol = $this->getColumnLetter($this->totalColumns);
 
-                // Matnlarni markazga joylashtirish
-                $sheet->getStyle('A2:K' . $this->rowCount)->applyFromArray([
+                // Ma'lumotlarni markazga joylashtirish
+                $sheet->getStyle('A3:' . $lastCol . $this->totalRows)->applyFromArray([
                     'alignment' => [
                         'horizontal' => Alignment::HORIZONTAL_CENTER,
                         'vertical' => Alignment::VERTICAL_CENTER,
@@ -173,144 +252,70 @@ class DavomatExport implements
                 ]);
 
                 // Talaba nomlarini chapga
-                $sheet->getStyle('B2:B' . $this->rowCount)->applyFromArray([
+                $sheet->getStyle('B3:B' . $this->totalRows)->applyFromArray([
                     'alignment' => [
                         'horizontal' => Alignment::HORIZONTAL_LEFT,
                     ]
                 ]);
 
-                // Izohni chapga
-                $sheet->getStyle('K2:K' . $this->rowCount)->applyFromArray([
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_LEFT,
-                    ]
-                ]);
+                // Para qiymatlariga rang berish
+                for ($row = 3; $row <= $this->totalRows; $row++) {
+                    for ($col = 3; $col <= $this->totalColumns - 3; $col++) {
+                        $cellValue = $sheet->getCell($this->getColumnLetter($col) . $row)->getValue();
 
-                // Rang berish - yo'q bo'lgan qatorlar
-                for ($row = 2; $row <= $this->rowCount; $row++) {
-                    $jamiYoq = $sheet->getCell('I' . $row)->getValue();
-
-                    if ($jamiYoq && is_numeric($jamiYoq) && $jamiYoq > 0) {
-                        $sheet->getStyle('I' . $row)->applyFromArray([
-                            'fill' => [
-                                'fillType' => Fill::FILL_SOLID,
-                                'startColor' => ['rgb' => 'FFC7CE']
-                            ],
-                            'font' => [
-                                'color' => ['rgb' => '9C0006'],
-                                'bold' => true
-                            ]
-                        ]);
-                    }
-
-                    // Davomat foizi rang berish
-                    $foiz = $sheet->getCell('J' . $row)->getValue();
-                    if ($foiz && is_numeric(str_replace('%', '', $foiz))) {
-                        $foizValue = floatval(str_replace('%', '', $foiz));
-                        if ($foizValue >= 90) {
-                            $color = 'C6EFCE'; // Yashil
-                            $fontColor = '006100';
-                        } elseif ($foizValue >= 70) {
-                            $color = 'FFEB9C'; // Sariq
-                            $fontColor = '9C5700';
-                        } else {
-                            $color = 'FFC7CE'; // Qizil
-                            $fontColor = '9C0006';
+                        if ($cellValue === '✓') {
+                            $sheet->getStyle($this->getColumnLetter($col) . $row)->applyFromArray([
+                                'font' => ['color' => ['rgb' => '006100'], 'bold' => true],
+                                'fill' => [
+                                    'fillType' => Fill::FILL_SOLID,
+                                    'startColor' => ['rgb' => 'C6EFCE']
+                                ]
+                            ]);
+                        } elseif ($cellValue === '✗') {
+                            $sheet->getStyle($this->getColumnLetter($col) . $row)->applyFromArray([
+                                'font' => ['color' => ['rgb' => '9C0006'], 'bold' => true],
+                                'fill' => [
+                                    'fillType' => Fill::FILL_SOLID,
+                                    'startColor' => ['rgb' => 'FFC7CE']
+                                ]
+                            ]);
                         }
-
-                        $sheet->getStyle('J' . $row)->applyFromArray([
-                            'fill' => [
-                                'fillType' => Fill::FILL_SOLID,
-                                'startColor' => ['rgb' => $color]
-                            ],
-                            'font' => [
-                                'color' => ['rgb' => $fontColor],
-                                'bold' => true
-                            ]
-                        ]);
                     }
+
+                    // Foiz ustuniga rang berish
+                    $foizCol = $this->getColumnLetter($this->totalColumns);
+                    $foizValue = floatval(str_replace('%', '', $sheet->getCell($foizCol . $row)->getValue()));
+
+                    if ($foizValue >= 90) {
+                        $color = 'C6EFCE';
+                        $fontColor = '006100';
+                    } elseif ($foizValue >= 70) {
+                        $color = 'FFEB9C';
+                        $fontColor = '9C5700';
+                    } else {
+                        $color = 'FFC7CE';
+                        $fontColor = '9C0006';
+                    }
+
+                    $sheet->getStyle($foizCol . $row)->applyFromArray([
+                        'fill' => [
+                            'fillType' => Fill::FILL_SOLID,
+                            'startColor' => ['rgb' => $color]
+                        ],
+                        'font' => [
+                            'color' => ['rgb' => $fontColor],
+                            'bold' => true
+                        ]
+                    ]);
                 }
 
-                // Header qatorini qotirish
-                $sheet->freezePane('A2');
+                // Header qatorlarini qotirish
+                $sheet->freezePane('C3');
+
+                // Qator balandligi
+                $sheet->getRowDimension(1)->setRowHeight(25);
+                $sheet->getRowDimension(2)->setRowHeight(20);
             }
-        ];
-    }
-
-    /**
-     * Talaba uchun qator ma'lumotlarini olish
-     */
-    private function getTalabaRow(Talaba $talaba, Carbon $sana): array
-    {
-        static $counter = 0;
-        $counter++;
-
-        // Talaba bu kunda kollej talabasi ekanligini tekshirish
-        if (!$talaba->isKollejTalabasi($sana)) {
-            $izoh = $this->getNullIzoh($talaba, $sana);
-            return [
-                $counter,
-                $talaba->fish,
-                $this->guruh->nomi,
-                $sana->format('d.m.Y'),
-                $this->getHaftaKuni($sana),
-                '',
-                '',
-                '',
-                '',
-                '',
-                $izoh,
-            ];
-        }
-
-        // Davomat ma'lumotlarini olish
-        $davomat = Davomat::where('talaba_id', $talaba->id)
-            ->where('sana', $sana->toDateString())
-            ->first();
-
-        if (!$davomat) {
-            return [
-                $counter,
-                $talaba->fish,
-                $this->guruh->nomi,
-                $sana->format('d.m.Y'),
-                $this->getHaftaKuni($sana),
-                '-',
-                '-',
-                '-',
-                '-',
-                '',
-                'Davomat olinmagan',
-            ];
-        }
-
-        $para1 = $this->getParaQiymati($davomat->para_1);
-        $para2 = $this->getParaQiymati($davomat->para_2);
-        $para3 = $this->getParaQiymati($davomat->para_3);
-
-        $jamiYoq = $davomat->jami_yoq;
-
-        // Davomat foizini hisoblash
-        $borSoni = 0;
-        $jamiParalar = 0;
-        foreach (['para_1', 'para_2', 'para_3'] as $para) {
-            if ($davomat->$para === 'bor') $borSoni++;
-            if (in_array($davomat->$para, ['bor', 'yoq'])) $jamiParalar++;
-        }
-        $foiz = $jamiParalar > 0 ? round(($borSoni / $jamiParalar) * 100, 1) : 0;
-
-        return [
-            $counter,
-            $talaba->fish,
-            $this->guruh->nomi,
-            $sana->format('d.m.Y'),
-            $this->getHaftaKuni($sana),
-            $para1,
-            $para2,
-            $para3,
-            $jamiYoq > 0 ? $jamiYoq : '-',
-            $foiz > 0 ? $foiz . '%' : '',
-            $davomat->izoh ?? '-',
         ];
     }
 
@@ -332,29 +337,27 @@ class DavomatExport implements
     private function getHaftaKuni(Carbon $sana): string
     {
         return match ($sana->dayOfWeek) {
-            Carbon::MONDAY => 'Dushanba',
-            Carbon::TUESDAY => 'Seshanba',
-            Carbon::WEDNESDAY => 'Chorshanba',
-            Carbon::THURSDAY => 'Payshanba',
-            Carbon::FRIDAY => 'Juma',
-            Carbon::SATURDAY => 'Shanba',
-            default => 'Yakshanba',
+            Carbon::MONDAY => 'Dush',
+            Carbon::TUESDAY => 'Sesh',
+            Carbon::WEDNESDAY => 'Chor',
+            Carbon::THURSDAY => 'Pay',
+            Carbon::FRIDAY => 'Jum',
+            Carbon::SATURDAY => 'Shan',
+            default => 'Yak',
         };
     }
 
     /**
-     * Talaba kollej talabasi bo'lmagan kun uchun izoh
+     * Ustun raqamini harfga aylantirish
      */
-    private function getNullIzoh(Talaba $talaba, Carbon $sana): string
+    private function getColumnLetter(int $columnNumber): string
     {
-        if ($sana->lt($talaba->kirgan_sana)) {
-            return "Talaba bu kunda hali kollej talabasi emas edi (kirgan sana: {$talaba->kirgan_sana->format('d.m.Y')})";
+        $letter = '';
+        while ($columnNumber > 0) {
+            $mod = ($columnNumber - 1) % 26;
+            $letter = chr(65 + $mod) . $letter;
+            $columnNumber = (int)(($columnNumber - $mod) / 26);
         }
-
-        if ($talaba->ketgan_sana && $sana->gt($talaba->ketgan_sana)) {
-            return "Talaba bu kunda kollej talabasi emas edi (ketgan sana: {$talaba->ketgan_sana->format('d.m.Y')})";
-        }
-
-        return "Talaba bu kunda kollej talabasi emas edi";
+        return $letter;
     }
 }

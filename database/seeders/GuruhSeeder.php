@@ -32,8 +32,8 @@ class GuruhSeeder extends Seeder
                 'is_active' => true,
             ],
             [
-                'nomi' => 'H-301',
-                'kurs' => '3',
+                'nomi' => 'H-101',
+                'kurs' => '1',
                 'yunalish' => 'Hisobchilik',
                 'is_active' => true,
             ],

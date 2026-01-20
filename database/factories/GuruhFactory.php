@@ -17,8 +17,8 @@ class GuruhFactory extends Factory
     public function definition(): array
     {
         return [
-            'nomi' => 'AT-' . fake()->numberBetween(101, 399),
-            'kurs' => fake()->numberBetween(1, 4),
+            'nomi' => 'AT-' . fake()->numberBetween(101, 299),
+            'kurs' => fake()->numberBetween(1, 2), // Kollejda faqat 1 va 2-kurs
             'yunalish' => fake()->randomElement([
                 'Axborot texnologiyalari',
                 'Menejment',
