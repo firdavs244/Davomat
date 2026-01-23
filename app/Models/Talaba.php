@@ -22,6 +22,15 @@ class Talaba extends Model
      */
     protected $fillable = [
         'fish',
+        'jshshir',
+        'pasport',
+        'tugilgan_sana',
+        'jinsi',
+        'qabul_turi',
+        'talim_shakli',
+        'oquv_yili',
+        'tuman',
+        'manzil',
         'guruh_id',
         'kirgan_sana',
         'ketgan_sana',
@@ -33,6 +42,7 @@ class Talaba extends Model
      * Attribute casting
      */
     protected $casts = [
+        'tugilgan_sana' => 'date',
         'kirgan_sana' => 'date',
         'ketgan_sana' => 'date',
     ];
@@ -62,17 +72,17 @@ class Talaba extends Model
             $sana = Carbon::parse($sana);
         }
         $sana = $sana ?? now();
-        
+
         // Kirgan sanadan oldin bo'lsa - talaba emas
         if ($sana->lt($this->kirgan_sana)) {
             return false;
         }
-        
+
         // Ketgan sanadan keyin bo'lsa - talaba emas
         if ($this->ketgan_sana && $sana->gt($this->ketgan_sana)) {
             return false;
         }
-        
+
         return true;
     }
 
@@ -114,7 +124,7 @@ class Talaba extends Model
     public function scopeKollejTalabasi($query, ?Carbon $sana = null)
     {
         $sana = $sana ?? now();
-        
+
         return $query->where('kirgan_sana', '<=', $sana)
             ->where(function ($q) use ($sana) {
                 $q->whereNull('ketgan_sana')
@@ -128,12 +138,12 @@ class Talaba extends Model
     public function getYoqlikStatistikasiAttribute(): array
     {
         $davomatlar = $this->davomatlar;
-        
+
         $jamiParalar = 0;
         $yoqParalar = 0;
-        
+
         foreach ($davomatlar as $d) {
-            foreach (['para_1', 'para_2', 'para_3'] as $para) {
+            foreach (['para_1', 'para_2', 'para_3', 'para_4'] as $para) {
                 if ($d->$para !== null) {
                     $jamiParalar++;
                     if ($d->$para === 'yoq') {
@@ -142,9 +152,9 @@ class Talaba extends Model
                 }
             }
         }
-        
+
         $foiz = $jamiParalar > 0 ? round(($yoqParalar / $jamiParalar) * 100, 1) : 0;
-        
+
         return [
             'jami_paralar' => $jamiParalar,
             'yoq_paralar' => $yoqParalar,
@@ -161,16 +171,16 @@ class Talaba extends Model
             ->whereYear('sana', $yil)
             ->whereMonth('sana', $oy)
             ->get();
-        
+
         $yoqlar = 0;
         foreach ($davomatlar as $d) {
-            foreach (['para_1', 'para_2', 'para_3'] as $para) {
+            foreach (['para_1', 'para_2', 'para_3', 'para_4'] as $para) {
                 if ($d->$para === 'yoq') {
                     $yoqlar++;
                 }
             }
         }
-        
+
         return $yoqlar;
     }
 
