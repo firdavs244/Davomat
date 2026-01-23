@@ -47,7 +47,7 @@ class DavomatHisobotController extends Controller
             $paraData = [];
             $guruhDavomatlari = $davomatlar[$guruh->id] ?? collect([]);
 
-            foreach ([1, 2, 3] as $para) {
+            foreach ([1, 2, 3, 4] as $para) {
                 // Para tugaganmi?
                 $paraTugadi = ParaVaqtlari::paraTugadimi($para);
                 $paraField = 'para_' . $para;
@@ -86,7 +86,7 @@ class DavomatHisobotController extends Controller
 
         // Umumiy statistika - har bir para uchun
         $umumiyStatistika = [];
-        foreach ([1, 2, 3] as $para) {
+        foreach ([1, 2, 3, 4] as $para) {
             $paraTugadi = ParaVaqtlari::paraTugadimi($para);
             $olinganGuruhlar = 0;
             $olinmaganGuruhlar = 0;
@@ -219,7 +219,7 @@ class DavomatHisobotController extends Controller
             $kunDavomatlari = $davomatlar[$sana] ?? collect([]);
 
             $paralar = [];
-            foreach ([1, 2, 3] as $para) {
+            foreach ([1, 2, 3, 4] as $para) {
                 $paraField = 'para_' . $para;
                 // Bu parada davomat olingan guruhlar
                 $paraGuruhlar = $kunDavomatlari->filter(fn($d) => $d->$paraField !== null)->unique('guruh_id');

@@ -64,6 +64,7 @@ class DavomatExport implements
             $row1[] = $sana->format('d.m.Y') . ' (' . $this->getHaftaKuni($sana) . ')';
             $row1[] = ''; // 2-para uchun bo'sh
             $row1[] = ''; // 3-para uchun bo'sh
+            $row1[] = ''; // 4-para uchun bo'sh
         }
         $row1[] = 'Jami'; // Jami ustuni
         $row1[] = '';
@@ -76,6 +77,7 @@ class DavomatExport implements
             $row2[] = '1-para';
             $row2[] = '2-para';
             $row2[] = '3-para';
+            $row2[] = '4-para';
         }
         $row2[] = 'Bor';
         $row2[] = "Yo'q";
@@ -98,6 +100,7 @@ class DavomatExport implements
                     $row[] = '-';
                     $row[] = '-';
                     $row[] = '-';
+                    $row[] = '-';
                     continue;
                 }
 
@@ -110,6 +113,7 @@ class DavomatExport implements
                     $row[] = '-';
                     $row[] = '-';
                     $row[] = '-';
+                    $row[] = '-';
                     continue;
                 }
 
@@ -117,9 +121,10 @@ class DavomatExport implements
                 $row[] = $this->getParaQiymati($davomat->para_1);
                 $row[] = $this->getParaQiymati($davomat->para_2);
                 $row[] = $this->getParaQiymati($davomat->para_3);
+                $row[] = $this->getParaQiymati($davomat->para_4);
 
                 // Jami hisoblash
-                foreach (['para_1', 'para_2', 'para_3'] as $para) {
+                foreach (['para_1', 'para_2', 'para_3', 'para_4'] as $para) {
                     if ($davomat->$para === 'bor') {
                         $borSoni++;
                         $jamiParalar++;
@@ -202,9 +207,9 @@ class DavomatExport implements
         $colIndex = 3; // C ustunidan boshlaymiz
         foreach ($this->sanalar as $sana) {
             $startCol = $this->getColumnLetter($colIndex);
-            $endCol = $this->getColumnLetter($colIndex + 2);
+            $endCol = $this->getColumnLetter($colIndex + 3);
             $sheet->mergeCells($startCol . '1:' . $endCol . '1');
-            $colIndex += 3;
+            $colIndex += 4;
         }
 
         // Jami ustunlarini birlashtirish

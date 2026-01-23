@@ -3,6 +3,7 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -43,6 +44,29 @@ class Handler extends ExceptionHandler
     {
         $this->reportable(function (Throwable $e) {
             //
+        });
+
+        // 404 sahifalar uchun role ga qarab yo'naltirish
+        $this->renderable(function (NotFoundHttpException $e, $request) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => 'Sahifa topilmadi'], 404);
+            }
+
+            $user = auth()->user();
+
+            if (!$user) {
+                return redirect()->route('login')->with('xato', 'Sahifa topilmadi. Tizimga kiring.');
+            }
+
+            // Role ga qarab tegishli sahifaga yo'naltirish
+            $redirectRoute = match($user->role) {
+                'admin' => 'dashboard',
+                'davomat_oluvchi' => 'davomat.olish',
+                'koruvchi' => 'dashboard',
+                default => 'dashboard',
+            };
+
+            return redirect()->route($redirectRoute)->with('xato', 'So\'ralgan sahifa topilmadi.');
         });
     }
 }

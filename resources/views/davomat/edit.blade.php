@@ -32,7 +32,7 @@
 
             <!-- 1-para -->
             <div class="space-y-3">
-                <label class="block text-sm font-medium text-foreground">1-para (08:00 - 09:20)</label>
+                <label class="block text-sm font-medium text-foreground">1-para (08:30 - 09:50)</label>
                 <div class="flex flex-wrap gap-3">
                     <label class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all"
                            :class="para1 === 'bor' ? 'border-success bg-success/10 text-success' : 'border-border hover:bg-muted'"
@@ -59,7 +59,7 @@
 
             <!-- 2-para -->
             <div class="space-y-3">
-                <label class="block text-sm font-medium text-foreground">2-para (09:30 - 10:50)</label>
+                <label class="block text-sm font-medium text-foreground">2-para (10:00 - 11:20)</label>
                 <div class="flex flex-wrap gap-3">
                     <label class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all border-border hover:bg-muted">
                         <input type="radio" name="para_2" value="bor" {{ $davomat->para_2 === 'bor' ? 'checked' : '' }}
@@ -84,7 +84,7 @@
 
             <!-- 3-para -->
             <div class="space-y-3">
-                <label class="block text-sm font-medium text-foreground">3-para (11:00 - 12:20)</label>
+                <label class="block text-sm font-medium text-foreground">3-para (11:30 - 12:50)</label>
                 <div class="flex flex-wrap gap-3">
                     <label class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all border-border hover:bg-muted">
                         <input type="radio" name="para_3" value="bor" {{ $davomat->para_3 === 'bor' ? 'checked' : '' }}
@@ -100,6 +100,31 @@
                     </label>
                     <label class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all border-border hover:bg-muted">
                         <input type="radio" name="para_3" value="" {{ $davomat->para_3 === null ? 'checked' : '' }}
+                               class="w-4 h-4 text-muted-foreground focus:ring-muted">
+                        <i data-lucide="minus" class="w-4 h-4 text-muted-foreground"></i>
+                        <span class="font-medium text-muted-foreground">Belgilanmagan</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- 4-para -->
+            <div class="space-y-3">
+                <label class="block text-sm font-medium text-foreground">4-para (13:30 - 14:50)</label>
+                <div class="flex flex-wrap gap-3">
+                    <label class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all border-border hover:bg-muted">
+                        <input type="radio" name="para_4" value="bor" {{ $davomat->para_4 === 'bor' ? 'checked' : '' }}
+                               class="w-4 h-4 text-success focus:ring-success">
+                        <i data-lucide="check" class="w-4 h-4 text-success"></i>
+                        <span class="font-medium text-success">Bor</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all border-border hover:bg-muted">
+                        <input type="radio" name="para_4" value="yoq" {{ $davomat->para_4 === 'yoq' ? 'checked' : '' }}
+                               class="w-4 h-4 text-destructive focus:ring-destructive">
+                        <i data-lucide="x" class="w-4 h-4 text-destructive"></i>
+                        <span class="font-medium text-destructive">Yo'q</span>
+                    </label>
+                    <label class="flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all border-border hover:bg-muted">
+                        <input type="radio" name="para_4" value="" {{ $davomat->para_4 === null ? 'checked' : '' }}
                                class="w-4 h-4 text-muted-foreground focus:ring-muted">
                         <i data-lucide="minus" class="w-4 h-4 text-muted-foreground"></i>
                         <span class="font-medium text-muted-foreground">Belgilanmagan</span>

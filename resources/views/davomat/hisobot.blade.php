@@ -32,8 +32,8 @@
     </div>
 
     {{-- Umumiy statistika kartalar --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        @foreach ([1, 2, 3] as $para)
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        @foreach ([1, 2, 3, 4] as $para)
             @php $stat = $umumiyStatistika[$para]; @endphp
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 {{ $stat['tugadi'] ? '' : 'opacity-60' }}">
                 <div class="flex items-center justify-between mb-3">
@@ -142,6 +142,7 @@
                     <option value="1">1-para</option>
                     <option value="2">2-para</option>
                     <option value="3">3-para</option>
+                    <option value="4">4-para</option>
                 </select>
 
                 <select x-model="holatFilter" class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
@@ -162,6 +163,7 @@
                             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">1-Para</th>
                             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">2-Para</th>
                             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">3-Para</th>
+                            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">4-Para</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -172,6 +174,7 @@
                                 data-para1="{{ $data['paralar'][1]['olindi'] ? 'olindi' : 'olinmadi' }}"
                                 data-para2="{{ $data['paralar'][2]['olindi'] ? 'olindi' : 'olinmadi' }}"
                                 data-para3="{{ $data['paralar'][3]['olindi'] ? 'olindi' : 'olinmadi' }}"
+                                data-para4="{{ $data['paralar'][4]['olindi'] ? 'olindi' : 'olinmadi' }}"
                                 x-show="filterGuruh($el)">
                                 <td class="px-4 py-3">
                                     <span class="font-medium text-gray-900">{{ $data['guruh']->nomi }}</span>
@@ -185,7 +188,7 @@
                                 <td class="px-4 py-3 text-center text-gray-600">
                                     {{ $data['guruh']->talabalar->count() }}
                                 </td>
-                                @foreach ([1, 2, 3] as $para)
+                                @foreach ([1, 2, 3, 4] as $para)
                                     <td class="px-4 py-3 text-center">
                                         @php $paraInfo = $data['paralar'][$para]; @endphp
                                         @if($paraInfo['olindi'])
@@ -227,14 +230,16 @@
                             ->where('sana', $sana)
                             ->get();
 
-                        // Para_1, para_2, para_3 ustunlaridan guruhlarni sanash
+                        // Para_1, para_2, para_3, para_4 ustunlaridan guruhlarni sanash
                         $para1Guruhlar = $oluvchiDavomatlari->filter(fn($d) => $d->para_1 !== null)->unique('guruh_id');
                         $para2Guruhlar = $oluvchiDavomatlari->filter(fn($d) => $d->para_2 !== null)->unique('guruh_id');
                         $para3Guruhlar = $oluvchiDavomatlari->filter(fn($d) => $d->para_3 !== null)->unique('guruh_id');
+                        $para4Guruhlar = $oluvchiDavomatlari->filter(fn($d) => $d->para_4 !== null)->unique('guruh_id');
 
                         $para1Count = $para1Guruhlar->count();
                         $para2Count = $para2Guruhlar->count();
                         $para3Count = $para3Guruhlar->count();
+                        $para4Count = $para4Guruhlar->count();
                         $jamiGuruhlar = $oluvchiDavomatlari->unique('guruh_id')->count();
                     @endphp
                     <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
@@ -265,6 +270,12 @@
                                 <span class="text-gray-600">3-para:</span>
                                 <span class="font-medium {{ $para3Count > 0 ? 'text-green-600' : 'text-gray-400' }}">
                                     {{ $para3Count }} guruh
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="text-gray-600">4-para:</span>
+                                <span class="font-medium {{ $para4Count > 0 ? 'text-green-600' : 'text-gray-400' }}">
+                                    {{ $para4Count }} guruh
                                 </span>
                             </div>
                             <hr class="my-2">
@@ -328,6 +339,7 @@ function hisobotApp() {
             const para1 = el.dataset.para1;
             const para2 = el.dataset.para2;
             const para3 = el.dataset.para3;
+            const para4 = el.dataset.para4;
 
             // Qidiruv filtri
             if (this.qidiruv && !guruhNomi.includes(this.qidiruv.toLowerCase())) {
@@ -349,12 +361,12 @@ function hisobotApp() {
             if (this.holatFilter) {
                 if (this.holatFilter === 'olindi') {
                     // Kamida bitta parada davomat olingan bo'lishi kerak
-                    if (para1 !== 'olindi' && para2 !== 'olindi' && para3 !== 'olindi') {
+                    if (para1 !== 'olindi' && para2 !== 'olindi' && para3 !== 'olindi' && para4 !== 'olindi') {
                         return false;
                     }
                 } else if (this.holatFilter === 'olinmadi') {
                     // Kamida bitta parada davomat olinmagan bo'lishi kerak
-                    if (para1 === 'olindi' && para2 === 'olindi' && para3 === 'olindi') {
+                    if (para1 === 'olindi' && para2 === 'olindi' && para3 === 'olindi' && para4 === 'olindi') {
                         return false;
                     }
                 }

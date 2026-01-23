@@ -26,6 +26,7 @@ class Davomat extends Model
         'para_1',
         'para_2',
         'para_3',
+        'para_4',
         'xodim_id',
         'izoh',
     ];
@@ -70,6 +71,7 @@ class Davomat extends Model
         if ($this->para_1 === 'yoq') $yoq++;
         if ($this->para_2 === 'yoq') $yoq++;
         if ($this->para_3 === 'yoq') $yoq++;
+        if ($this->para_4 === 'yoq') $yoq++;
         return $yoq;
     }
 
@@ -82,6 +84,7 @@ class Davomat extends Model
         if ($this->para_1 === 'bor') $bor++;
         if ($this->para_2 === 'bor') $bor++;
         if ($this->para_3 === 'bor') $bor++;
+        if ($this->para_4 === 'bor') $bor++;
         return $bor;
     }
 
@@ -131,7 +134,7 @@ class Davomat extends Model
         $sana = $sana ?? now();
         $haftaBoshi = $sana->copy()->startOfWeek();
         $haftaOxiri = $sana->copy()->endOfWeek();
-        
+
         return $query->whereBetween('sana', [$haftaBoshi, $haftaOxiri]);
     }
 
@@ -142,7 +145,7 @@ class Davomat extends Model
     {
         $yil = $yil ?? now()->year;
         $oy = $oy ?? now()->month;
-        
+
         return $query->whereYear('sana', $yil)->whereMonth('sana', $oy);
     }
 
@@ -161,15 +164,15 @@ class Davomat extends Model
     public static function bugungiStatistika(): array
     {
         $bugun = now()->toDateString();
-        
+
         $davomatlar = self::where('sana', $bugun)->get();
-        
+
         $jamiParalar = 0;
         $borParalar = 0;
         $yoqParalar = 0;
-        
+
         foreach ($davomatlar as $d) {
-            foreach (['para_1', 'para_2', 'para_3'] as $para) {
+            foreach (['para_1', 'para_2', 'para_3', 'para_4'] as $para) {
                 if ($d->$para !== null) {
                     $jamiParalar++;
                     if ($d->$para === 'bor') $borParalar++;
@@ -177,9 +180,9 @@ class Davomat extends Model
                 }
             }
         }
-        
+
         $foiz = $jamiParalar > 0 ? round(($borParalar / $jamiParalar) * 100, 1) : 0;
-        
+
         return [
             'jami_talabalar' => $davomatlar->count(),
             'jami_paralar' => $jamiParalar,
@@ -196,21 +199,21 @@ class Davomat extends Model
     {
         $haftaBoshi = now()->startOfWeek();
         $haftaOxiri = now()->endOfWeek();
-        
+
         $davomatlar = self::whereBetween('sana', [$haftaBoshi, $haftaOxiri])->get();
-        
+
         $jamiParalar = 0;
         $borParalar = 0;
-        
+
         foreach ($davomatlar as $d) {
-            foreach (['para_1', 'para_2', 'para_3'] as $para) {
+            foreach (['para_1', 'para_2', 'para_3', 'para_4'] as $para) {
                 if ($d->$para !== null) {
                     $jamiParalar++;
                     if ($d->$para === 'bor') $borParalar++;
                 }
             }
         }
-        
+
         return $jamiParalar > 0 ? round(($borParalar / $jamiParalar) * 100, 1) : 0;
     }
 }

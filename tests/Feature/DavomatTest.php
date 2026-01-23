@@ -82,6 +82,7 @@ class DavomatTest extends TestCase
             'para_1' => 'yoq',
             'para_2' => 'bor',
             'para_3' => 'bor',
+            'para_4' => 'bor',
         ]);
 
         $response->assertRedirect();

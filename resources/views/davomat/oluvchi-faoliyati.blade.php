@@ -114,6 +114,7 @@
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">1-Para</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">2-Para</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">3-Para</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">4-Para</th>
                         <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jami</th>
                     </tr>
                 </thead>
@@ -128,7 +129,7 @@
                                     {{ \Carbon\Carbon::parse($sana)->locale('uz')->dayName }}
                                 </div>
                             </td>
-                            @foreach ([1, 2, 3] as $para)
+                            @foreach ([1, 2, 3, 4] as $para)
                                 <td class="px-4 py-3 text-center">
                                     @if($kunData['paralar'][$para]['guruhlar_soni'] > 0)
                                         <div class="inline-flex flex-col items-center">
@@ -156,7 +157,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-10 text-center text-gray-500">
+                            <td colspan="6" class="px-4 py-10 text-center text-gray-500">
                                 <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-3 text-gray-300"></i>
                                 <p>Bu davrda faoliyat topilmadi</p>
                             </td>

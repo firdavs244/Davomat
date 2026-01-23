@@ -11,8 +11,8 @@ use Carbon\Carbon;
 class ParaVaqtlari
 {
     /**
-     * Para vaqtlari (tugatish vaqti asosida)
-     * Para tugagandan keyin davomat olish mumkin
+     * Para vaqtlari (boshlanish va tugash vaqti)
+     * Davomat faqat para davomida olinishi mumkin
      */
     public const PARALAR = [
         1 => [
@@ -29,6 +29,11 @@ class ParaVaqtlari
             'boshlanish' => '11:30',
             'tugash' => '12:50',
             'nomi' => '3-para (11:30 - 12:50)',
+        ],
+        4 => [
+            'boshlanish' => '13:30',
+            'tugash' => '14:50',
+            'nomi' => '4-para (13:30 - 14:50)',
         ],
     ];
 
@@ -78,26 +83,26 @@ class ParaVaqtlari
 
     /**
      * Hozir qaysi para uchun davomat olish mumkin
-     * Para tugagandan keyin davomat olish mumkin
-     * Keyingi para boshlanmaguncha avvalgi para uchun davomat olish mumkin
+     * Davomat faqat para davomida (boshlanishidan tugashigacha) olinishi mumkin
+     * 4-para tugagandan keyin ertangi 1-parani kutish kerak
      */
     public static function hozirgiDavomatPara(): ?int
     {
         $hozir = self::hozirgiVaqt();
         $bugun = self::bugungiSana();
 
-        // Oxirgi tugagan parani topish
-        $davomatPara = null;
-
+        // Hozirgi vaqtda qaysi para davom etyapti
         foreach (self::PARALAR as $paraRaqam => $vaqtlar) {
-            $tugashVaqti = Carbon::parse($bugun . ' ' . $vaqtlar['tugash'], self::TIMEZONE);
+            $boshlanish = Carbon::parse($bugun . ' ' . $vaqtlar['boshlanish'], self::TIMEZONE);
+            $tugash = Carbon::parse($bugun . ' ' . $vaqtlar['tugash'], self::TIMEZONE);
 
-            if ($hozir->greaterThanOrEqualTo($tugashVaqti)) {
-                $davomatPara = $paraRaqam;
+            // Agar hozirgi vaqt bu para vaqtida bo'lsa
+            if ($hozir->between($boshlanish, $tugash)) {
+                return $paraRaqam;
             }
         }
 
-        return $davomatPara;
+        return null; // Hech qanday para vaqtida emas
     }
 
     /**
@@ -121,23 +126,22 @@ class ParaVaqtlari
     }
 
     /**
-     * Bugungi kun uchun davomat olish mumkin bo'lgan paralar
+     * Bugungi kun uchun davomat olish mumkin bo'lgan paralar (hozir davom etyapti)
      */
     public static function mavjudParalar(): array
     {
-        $mavjud = [];
+        $hozirgiPara = self::hozirgiDavomatPara();
 
-        foreach (self::PARALAR as $paraRaqam => $vaqtlar) {
-            if (self::paraTugadimi($paraRaqam)) {
-                $mavjud[] = $paraRaqam;
-            }
+        if ($hozirgiPara !== null) {
+            return [$hozirgiPara];
         }
 
-        return $mavjud;
+        return [];
     }
 
     /**
      * Berilgan para uchun davomat olish mumkinmi (vaqt bo'yicha)
+     * Davomat faqat para davomida olinishi mumkin
      */
     public static function davomatOlishMumkinmi(int $para, ?string $sana = null): bool
     {
@@ -148,7 +152,48 @@ class ParaVaqtlari
             return false; // O'tgan sanalar uchun davomat olish mumkin emas
         }
 
-        return self::paraTugadimi($para);
+        // Hozirgi para bilan mos kelishi kerak
+        return self::hozirgiDavomatPara() === $para;
+    }
+
+    /**
+     * 4-para tugaganmi va ertangi kun kutilmoqdami
+     */
+    public static function kunTugadimi(): bool
+    {
+        $hozir = self::hozirgiVaqt();
+        $bugun = self::bugungiSana();
+
+        // 4-para tugash vaqti
+        $oxirgiParaTugash = Carbon::parse($bugun . ' ' . self::PARALAR[4]['tugash'], self::TIMEZONE);
+
+        return $hozir->greaterThan($oxirgiParaTugash);
+    }
+
+    /**
+     * Keyingi para qachon boshlanadi (timer uchun)
+     */
+    public static function keyingiParaBoshlanishVaqti(): ?Carbon
+    {
+        $hozir = self::hozirgiVaqt();
+        $bugun = self::bugungiSana();
+
+        // Agar kun tugagan bo'lsa (4-para tugagandan keyin), ertangi 1-para
+        if (self::kunTugadimi()) {
+            $ertaga = Carbon::parse($bugun, self::TIMEZONE)->addDay();
+            return Carbon::parse($ertaga->toDateString() . ' ' . self::PARALAR[1]['boshlanish'], self::TIMEZONE);
+        }
+
+        // Keyingi boshlanadigan parani topish
+        foreach (self::PARALAR as $paraRaqam => $vaqtlar) {
+            $boshlanish = Carbon::parse($bugun . ' ' . $vaqtlar['boshlanish'], self::TIMEZONE);
+
+            if ($hozir->lessThan($boshlanish)) {
+                return $boshlanish;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -176,18 +221,14 @@ class ParaVaqtlari
      */
     public static function keyingiParaTugashVaqti(): ?Carbon
     {
-        $hozir = self::hozirgiVaqt();
-        $bugun = self::bugungiSana();
+        $hozirgiPara = self::hozirgiDavomatPara();
 
-        foreach (self::PARALAR as $paraRaqam => $vaqtlar) {
-            $tugash = Carbon::parse($bugun . ' ' . $vaqtlar['tugash'], self::TIMEZONE);
-
-            if ($hozir->lessThan($tugash)) {
-                return $tugash;
-            }
+        if ($hozirgiPara === null) {
+            return null;
         }
 
-        return null;
+        $bugun = self::bugungiSana();
+        return Carbon::parse($bugun . ' ' . self::PARALAR[$hozirgiPara]['tugash'], self::TIMEZONE);
     }
 
     /**
@@ -201,7 +242,9 @@ class ParaVaqtlari
             'hozirgi_para' => self::hozirgiPara(),
             'davomat_para' => self::hozirgiDavomatPara(),
             'mavjud_paralar' => self::mavjudParalar(),
+            'keyingi_boshlanish' => self::keyingiParaBoshlanishVaqti()?->format('H:i:s'),
             'keyingi_tugash' => self::keyingiParaTugashVaqti()?->format('H:i:s'),
+            'kun_tugadi' => self::kunTugadimi(),
         ];
     }
 }

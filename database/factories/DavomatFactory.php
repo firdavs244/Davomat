@@ -27,6 +27,7 @@ class DavomatFactory extends Factory
             'para_1' => fake()->randomElement(['bor', 'yoq']),
             'para_2' => fake()->randomElement(['bor', 'yoq']),
             'para_3' => fake()->randomElement(['bor', 'yoq', null]),
+            'para_4' => fake()->randomElement(['bor', 'yoq', null]),
             'xodim_id' => User::factory(),
         ];
     }

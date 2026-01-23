@@ -38,18 +38,22 @@
         @endif
         <div class="mt-6 p-4 bg-muted/30 rounded-lg">
             <h4 class="font-medium text-foreground mb-2">Para vaqtlari:</h4>
-            <div class="grid grid-cols-3 gap-4 text-sm">
+            <div class="grid grid-cols-4 gap-4 text-sm">
                 <div class="text-center">
                     <span class="badge {{ ($paraHolati['hozirgi_para'] ?? 0) == 1 ? 'badge-primary' : 'badge-secondary' }}">1-para</span>
-                    <p class="mt-1 text-muted-foreground">08:00 - 09:20</p>
+                    <p class="mt-1 text-muted-foreground">08:30 - 09:50</p>
                 </div>
                 <div class="text-center">
                     <span class="badge {{ ($paraHolati['hozirgi_para'] ?? 0) == 2 ? 'badge-primary' : 'badge-secondary' }}">2-para</span>
-                    <p class="mt-1 text-muted-foreground">09:30 - 10:50</p>
+                    <p class="mt-1 text-muted-foreground">10:00 - 11:20</p>
                 </div>
                 <div class="text-center">
                     <span class="badge {{ ($paraHolati['hozirgi_para'] ?? 0) == 3 ? 'badge-primary' : 'badge-secondary' }}">3-para</span>
-                    <p class="mt-1 text-muted-foreground">11:00 - 12:20</p>
+                    <p class="mt-1 text-muted-foreground">11:30 - 12:50</p>
+                </div>
+                <div class="text-center">
+                    <span class="badge {{ ($paraHolati['hozirgi_para'] ?? 0) == 4 ? 'badge-primary' : 'badge-secondary' }}">4-para</span>
+                    <p class="mt-1 text-muted-foreground">13:30 - 14:50</p>
                 </div>
             </div>
         </div>
@@ -507,7 +511,7 @@
 
 @push('scripts')
 <script>
-// Para timer (agar para tugamagan bo'lsa)
+// Para timer (keyingi para boshlanishini kutish)
 function paraTimer() {
     return {
         timeLeft: '--:--:--',
@@ -522,16 +526,22 @@ function paraTimer() {
             fetch('{{ route("davomat.para-holati") }}')
                 .then(res => res.json())
                 .then(data => {
-                    if (data.keyingi_tugash) {
+                    // Keyingi para boshlanish vaqtini hisoblash
+                    if (data.keyingi_boshlanish) {
                         const now = new Date();
-                        const [h, m, s] = data.keyingi_tugash.split(':');
+                        const [h, m, s] = data.keyingi_boshlanish.split(':');
                         const target = new Date();
                         target.setHours(parseInt(h), parseInt(m), parseInt(s), 0);
+
+                        // Agar kun tugagan bo'lsa (ertangi kun)
+                        if (data.kun_tugadi) {
+                            target.setDate(target.getDate() + 1);
+                        }
 
                         const diff = Math.max(0, Math.floor((target - now) / 1000));
 
                         if (diff <= 0) {
-                            // Para tugadi, sahifani yangilash
+                            // Para boshlandi, sahifani yangilash
                             clearInterval(this.interval);
                             window.location.reload();
                         } else {
@@ -540,6 +550,10 @@ function paraTimer() {
                             const secs = diff % 60;
                             this.timeLeft = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
                         }
+                    } else if (data.davomat_para) {
+                        // Para davom etyapti, sahifani yangilash
+                        clearInterval(this.interval);
+                        window.location.reload();
                     }
                 });
         }
@@ -629,15 +643,66 @@ function davomatForm() {
         totalCount: {{ $talabalar->count() ?? 0 }},
         submitting: false,
         confirmed: false,
+        storageKey: 'davomat_{{ $guruhId ?? "0" }}_{{ $para ?? "0" }}_{{ $sana ?? "" }}',
 
         init() {
+            // LocalStorage dan belgilarni tiklash
+            this.restoreFromStorage();
+
             this.updateStats();
 
             // Tasdiqlash hodisasini tinglash
             window.addEventListener('confirm-save', () => {
                 this.confirmed = true;
+                // Saqlangandan keyin localStorage ni tozalash
+                this.clearStorage();
                 document.getElementById('davomatForm').submit();
             });
+
+            // Har safar radio o'zgarganda localStorage ga saqlash
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                radio.addEventListener('change', () => {
+                    this.saveToStorage();
+                    this.updateStats();
+                });
+            });
+        },
+
+        // LocalStorage ga saqlash
+        saveToStorage() {
+            const data = {};
+            document.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+                const name = radio.name;
+                const match = name.match(/davomat\[(\d+)\]/);
+                if (match) {
+                    data[match[1]] = radio.value;
+                }
+            });
+            localStorage.setItem(this.storageKey, JSON.stringify(data));
+        },
+
+        // LocalStorage dan tiklash
+        restoreFromStorage() {
+            try {
+                const saved = localStorage.getItem(this.storageKey);
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    Object.keys(data).forEach(talabaId => {
+                        const value = data[talabaId];
+                        const radio = document.querySelector(`input[name="davomat[${talabaId}]"][value="${value}"]`);
+                        if (radio) {
+                            radio.checked = true;
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error('LocalStorage dan tiklashda xatolik:', e);
+            }
+        },
+
+        // LocalStorage ni tozalash
+        clearStorage() {
+            localStorage.removeItem(this.storageKey);
         },
 
         selectAll(value) {
@@ -645,6 +710,7 @@ function davomatForm() {
             radios.forEach(radio => {
                 radio.checked = true;
             });
+            this.saveToStorage();
             this.updateStats();
         },
 
@@ -653,6 +719,7 @@ function davomatForm() {
             radios.forEach(radio => {
                 radio.checked = false;
             });
+            this.clearStorage();
             this.updateStats();
         },
 
@@ -668,6 +735,7 @@ function davomatForm() {
             // Agar tasdiqlangan bo'lsa, formni yuborish
             if (this.confirmed) {
                 this.submitting = true;
+                this.clearStorage();
                 return true;
             }
 
@@ -703,6 +771,34 @@ setInterval(updateServerTime, 1000);
 // Lucide icons
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => { lucide.createIcons(); }, 100);
+
+    // Agar davomat muvaffaqiyatli saqlangan bo'lsa, localStorage ni tozalash
+    @if(session('muvaffaqiyat'))
+    const storageKey = 'davomat_{{ $guruhId ?? "0" }}_{{ $para ?? "0" }}_{{ $sana ?? "" }}';
+    localStorage.removeItem(storageKey);
+    @endif
+
+    // Eskirgan localStorage ma'lumotlarini tozalash (1 kundan eski)
+    try {
+        const now = new Date().getTime();
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('davomat_')) {
+                // Sanani olish va tekshirish
+                const parts = key.split('_');
+                if (parts.length >= 4) {
+                    const savedDate = parts[3];
+                    const savedDateObj = new Date(savedDate);
+                    const daysDiff = (now - savedDateObj.getTime()) / (1000 * 60 * 60 * 24);
+                    if (daysDiff > 1) {
+                        localStorage.removeItem(key);
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.error('LocalStorage tozalashda xatolik:', e);
+    }
 });
 </script>
 @endpush

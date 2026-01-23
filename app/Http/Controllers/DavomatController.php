@@ -29,15 +29,36 @@ class DavomatController extends Controller
             $sana = ParaVaqtlari::bugungiSana();
             $para = ParaVaqtlari::hozirgiDavomatPara();
 
-            // Agar hech qanday para tugamagan bo'lsa
-            if ($para === null) {
-                $keyingiTugash = ParaVaqtlari::keyingiParaTugashVaqti();
-                $qolganVaqt = $keyingiTugash ? $keyingiTugash->diffForHumans() : null;
+            // Agar kun tugagan bo'lsa (4-para tugagandan keyin)
+            if (ParaVaqtlari::kunTugadimi()) {
+                $keyingiBoshlanish = ParaVaqtlari::keyingiParaBoshlanishVaqti();
 
                 return view('davomat.olish', [
-                    'xabar' => 'Hozircha davomat olish uchun vaqt kelmadi. Birinchi para tugashini kuting.',
-                    'keyingiTugash' => $keyingiTugash,
-                    'qolganVaqt' => $qolganVaqt,
+                    'xabar' => 'Bugungi darslar tugadi. Ertangi 1-para boshlanishini kuting.',
+                    'keyingiTugash' => $keyingiBoshlanish,
+                    'qolganVaqt' => $keyingiBoshlanish ? $keyingiBoshlanish->diffForHumans() : null,
+                    'paraHolati' => ParaVaqtlari::holatInfo(),
+                    'guruhlar' => collect(),
+                    'talabalar' => collect(),
+                    'mavjudDavomat' => collect(),
+                    'sana' => $sana,
+                    'para' => null,
+                    'guruhId' => null,
+                    'isAdmin' => false,
+                    'mavjudParalar' => [],
+                    'paralarRoyxati' => ParaVaqtlari::barchaParalar(),
+                    'kunTugadi' => true,
+                ]);
+            }
+
+            // Agar hech qanday para davom etmayotgan bo'lsa
+            if ($para === null) {
+                $keyingiBoshlanish = ParaVaqtlari::keyingiParaBoshlanishVaqti();
+
+                return view('davomat.olish', [
+                    'xabar' => 'Hozircha davomat olish uchun vaqt kelmadi. Keyingi para boshlanishini kuting.',
+                    'keyingiTugash' => $keyingiBoshlanish,
+                    'qolganVaqt' => $keyingiBoshlanish ? $keyingiBoshlanish->diffForHumans() : null,
                     'paraHolati' => ParaVaqtlari::holatInfo(),
                     'guruhlar' => collect(),
                     'talabalar' => collect(),
@@ -125,7 +146,7 @@ class DavomatController extends Controller
         $validated = $request->validate([
             'guruh_id' => 'required|exists:guruhlar,id',
             'sana' => 'required|date',
-            'para' => 'required|in:1,2,3',
+            'para' => 'required|in:1,2,3,4',
             'davomat' => 'nullable|array',
             'davomat.*' => 'required|in:bor,yoq',
         ], [
@@ -256,6 +277,7 @@ class DavomatController extends Controller
             'para_1' => 'nullable|in:bor,yoq',
             'para_2' => 'nullable|in:bor,yoq',
             'para_3' => 'nullable|in:bor,yoq',
+            'para_4' => 'nullable|in:bor,yoq',
             'izoh' => 'nullable|string|max:500',
         ]);
 
@@ -286,7 +308,7 @@ class DavomatController extends Controller
 
         $davomatlar = Davomat::where('guruh_id', $guruhId)
             ->where('sana', $sana)
-            ->get(['talaba_id', 'para_1', 'para_2', 'para_3']);
+            ->get(['talaba_id', 'para_1', 'para_2', 'para_3', 'para_4']);
 
         return response()->json($davomatlar);
     }

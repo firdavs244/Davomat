@@ -47,6 +47,7 @@
                         <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">1-para</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">2-para</th>
                         <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">3-para</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">4-para</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border">
@@ -94,10 +95,19 @@
                             <span class="text-muted-foreground">-</span>
                             @endif
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-center">
+                            @if($davomat->para_4 === 'bor')
+                            <span class="badge badge-success gap-1"><i data-lucide="check" class="w-3 h-3"></i> Bor</span>
+                            @elseif($davomat->para_4 === 'yoq')
+                            <span class="badge badge-destructive gap-1"><i data-lucide="x" class="w-3 h-3"></i> Yo'q</span>
+                            @else
+                            <span class="text-muted-foreground">-</span>
+                            @endif
+                        </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
+                        <td colspan="7" class="px-6 py-12 text-center">
                             <i data-lucide="clipboard-x" class="w-12 h-12 text-muted-foreground mx-auto mb-4"></i>
                             <p class="text-muted-foreground">Siz hali davomat olmadingiz</p>
                         </td>
