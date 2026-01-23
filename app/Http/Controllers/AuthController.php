@@ -18,7 +18,7 @@ class AuthController extends Controller
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
-        
+
         return view('auth.login');
     }
 
@@ -41,7 +41,7 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials, $request->boolean('remember'))) {
             $user = Auth::user();
-            
+
             // Aktiv emasligini tekshirish
             if (!$user->is_active) {
                 Auth::logout();
@@ -49,9 +49,17 @@ class AuthController extends Controller
                     'email' => 'Sizning hisobingiz faol emas. Administrator bilan bog\'laning.',
                 ]);
             }
-            
+
             $request->session()->regenerate();
-            
+
+            // Rolga qarab yo'naltirish
+            if ($user->isDavomatOluvchi()) {
+                // Davomat oluvchi foydalanuvchilarni to'g'ridan-to'g'ri davomat olish sahifasiga yo'naltirish
+                return redirect()->route('davomat.olish')
+                    ->with('muvaffaqiyat', 'Xush kelibsiz, ' . $user->name . '!');
+            }
+
+            // Boshqa foydalanuvchilarni dashboard ga yo'naltirish
             return redirect()->intended(route('dashboard'))
                 ->with('muvaffaqiyat', 'Xush kelibsiz, ' . $user->name . '!');
         }
@@ -69,7 +77,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect()->route('login')
             ->with('muvaffaqiyat', 'Tizimdan muvaffaqiyatli chiqdingiz.');
     }
